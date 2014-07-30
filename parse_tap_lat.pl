@@ -12,6 +12,7 @@ open (FILE, $filename) or die "Failed to open file '$filename' \n";
 
 my $title = <FILE>;	# first line expected to be title line
 my $lasthour = 0, $lastminute = 0, $lastsecond = 0, $periodavg = 0;
+my $periodsamples = 0, $periodtx = 0, $periodavg = 0, $periodmax = 0, $periodmin = 0;
 
 while(my $line = <FILE>)
 {
@@ -27,25 +28,32 @@ while(my $line = <FILE>)
 	my ($hour, $minute, $second) = (split /:/, $time);
 	# print $time." ".$second."\n";
 
-
-	# Detecting start of new period (eg a new minute):
-	if (($lasthour != $hour) and ($lastminute != $minute)) {
-		print $lastsecond ." new minute ". $second ."\n";
+	# Detecting start of new measurement period (eg a new minute):
+	if (($hour != $lasthour ) or ($minute != $lastminute)) {
+		# print $lastsecond ." new minute ". $second ."\n";
 		# print "nr of transfers was: ". $nrtx. "\n";
-		print "avg of period was: " . $periodavg . "\n";
-		$nrtx = 0; $avgs = 0; $maxs = 0; $mins = 0;
+		print "nr of samples during period ($lasthour:$lastminute) was: " . $periodsamples . "\n";
+		print "nr of TX during period was: " . $periodtx . "\n";
+		print "avg of period was: "; printf("%.2f\n", $periodavg);
+		#print "avg of period was: " . $periodavg . "\n";
+		print "max of period was: " . $periodmax . "\n";
+		print "min of period was: " . $periodmin . "\n";
+		$periodtx = 0; $avgs = 0;
+		$periodmax = 0; $periodmin = 9999999;
 		$periodavg = 0;
+		$periodsamples = 0;
 	}
-
-	$nrtx += $ntx;
+	$periodtx += $ntx;
 	$avgs += $avg;
-	$maxs += $max;
-	$mins += $min;
-	$periodavg = $avgs / $nrtx;
+	$periodsamples++;
+	$periodavg = $avgs / $periodsamples;
+	if ($max > $periodmax) {$periodmax = $max;}
+	if ($min < $periodmin) {$periodmin = $min;}
 
 	$lasthour = $hour;
 	$lastminute = $minute;
 	$lastsecond = $second;
 }
+# One last measurment period considered to end with the end of the log file.
 
 close FILE;
