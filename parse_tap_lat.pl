@@ -61,7 +61,7 @@ sub period_report
 
 	# Insert period report into DB:
 	my $sth = $dbh->prepare("INSERT INTO taplat(date,txavg,txmax,txmin,ntx) VALUES (?,?,?,?,?)");
-	$sth->execute("$date:$lasthour:$lastminute:00", $period{avg}, $period{max}, $period{min}, $period{tx});
+	$sth->execute("$date $lasthour:$lastminute:00", $period{avg}, $period{max}, $period{min}, $period{tx});
 	# $dbh->commit;		# required unless AutoCommit is set.
 }
 
