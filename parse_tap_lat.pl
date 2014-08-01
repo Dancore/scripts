@@ -3,22 +3,22 @@
 # (currently per minute). The data unit is then submitted to a PgSQL DB.
 #
 
-#use strict;
+use strict;
 use DBI;
 
-$filename = "test.csv";
+my $filename = "test.csv";
 #$filename = "badfile.csv";
-$database = "test";
-$dbuser = "testuser";
-$dbpassword = "";
+my $database = "test";
+my $dbuser = "testuser";
+my $dbpassword = "";
 # $dbhost = "";
 # $dbport = "";
 
 # Database handle object:
-$dbh;
+my $dbh;
 
 # period data structure
-%period = (
+my %period = (
 	samples => 0,
 	tx => 0,
 	ackavg => 0,
@@ -50,9 +50,9 @@ sub period_calculate
 sub period_report
 {
 	# my $self = shift;
-	my ($date, $lasthour, $lastminute) = @_;
+	my ($date, $lasthour, $lastminute, $lastsecond) = @_;
 	print " GOT date $date $lasthour:$lastminute \n";
-	print "nr of samples during period ($lasthour:$lastminute) was: " . $period{samples} . "\n";
+	print "nr of samples during period ($lasthour:$lastminute:$lastsecond) was: " . $period{samples} . "\n";
 	print "nr of TX during period was: " . $period{tx} . "\n";
 	print "avg of period was: "; printf("%.2f\n", $period{avg});
 	print "max of period was: " . $period{max} . "\n";
@@ -81,7 +81,10 @@ $sth = $dbh->prepare("ALTER SEQUENCE id_seq RESTART WITH 1");
 $sth->execute;
 
 my $title = <$thefile>;	# first line expected to be title line
-my $lasthour = 0, $lastminute = 0, $lastsecond = 0, $date = 0;
+my $lasthour = 0;
+my $lastminute = 0;
+my $lastsecond = 0;
+my $date = 0;
 
 while (my $line = <$thefile>)
 {
@@ -98,7 +101,7 @@ while (my $line = <$thefile>)
 	# Detecting start of new measurement period (eg a new minute):
 	if (($hour != $lasthour ) or ($minute != $lastminute)) {
 		if($. > 2) {	# don't report before at least the first row/line (after title) is calc'd.
-			period_report($date, $lasthour, $lastminute);
+			period_report($date, $lasthour, $lastminute, $lastsecond);
 		}
 		period_reset;
 	}
@@ -109,7 +112,7 @@ while (my $line = <$thefile>)
 	$lastsecond = $second;
 }
 # One last measurment period considered to end with the end of the log file.
-period_report($date, $lasthour, $lastminute);
+period_report($date, $lasthour, $lastminute, $lastsecond);
 
 # Housekeeping:
 $dbh->disconnect;
