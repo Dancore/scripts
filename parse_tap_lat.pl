@@ -9,7 +9,8 @@ use DBI;
 # bundle data into periods (currently per minute) and recalc measurements, if set:
 my $do_period_calc = 0;
 
-my $filename = "test.csv";
+my $dir = "./";
+# my $filename = "test.csv";
 #$filename = "badfile.csv";
 my $database = "test";
 my $dbuser = "testuser";
@@ -72,11 +73,11 @@ sub period_report
 sub line2db
 {
 	my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = @_;
-	print " GOT date $T, $tcode, $txid \n";
-	print "nTX was: " . $ntx . "\n";
-	print "avg was: " . $avg . "\n";
-	print "max was: " . $max . "\n";
-	print "min was: " . $min . "\n";
+	print " GOT date $T, $tcode, $txid, ";
+	print " nTX: " . $ntx;
+	print " avg: " . $avg;
+	print " max: " . $max;
+	print " min: " . $min . "\n";
 
 	# Insert line into DB:
 	my $sth = $dbh->prepare("INSERT INTO tx_taplat_data_raw(datetime_col,usercode,transaction_name,avg_resp,max_resp,min_resp,nbr_transactions,gateway,tap_instance) VALUES (?,?,?,?,?,?,?,?,?)");
@@ -100,8 +101,8 @@ sub clear_table
 	$sth->execute;
 }
 
-print "Trying to read csv file '$filename'\n";
-open (my $thefile, '<:encoding(utf8)', $filename) or die "ERROR: Failed to open file '$filename' \n";
+print "Trying to open dir '$dir'\n";
+opendir(DIR, $dir) or die $!;
 
 # Establish DB connection:
 print "Trying to establish DB connection\n";
@@ -109,14 +110,30 @@ print "Trying to establish DB connection\n";
 $dbh = DBI->connect("dbi:Pg:dbname=$database", $dbuser, $dbpassword, {RaiseError => 1, AutoCommit => 1})
 	or die "ERROR: Failed to connect to database: $DBI::errstr\n";
 
+if ($do_period_calc) {
+	clear_table;
+}
+else {
+	clear_table2;
+}
+
+while (my $filename = readdir(DIR))
+{
+	# only csv files:
+	next unless (-f "$dir/$filename");
+	next unless ($filename =~ m/\.csv$/);
+
+print "Trying to read csv file '$filename'\n";
+open (my $thefile, '<:encoding(utf8)', $filename) or die "ERROR: Failed to open file '$filename' \n";
+
 my $title = <$thefile>;	# first line expected to be title line
 my $lasthour = 0;
 my $lastminute = 0;
 my $lastsecond = 0;
 my $date = 0;
 
-if ($do_period_calc) {
-	clear_table;
+if ($do_period_calc)
+{
 	while (my $line = <$thefile>)
 	{
 		chomp $line;
@@ -145,8 +162,8 @@ if ($do_period_calc) {
 	# One last measurment period considered to end with the end of the log file.
 	period_report($date, $lasthour, $lastminute, $lastsecond);
 }
-else {
-	clear_table2;
+else
+{
 	while (my $line = <$thefile>)
 	{
 		chomp $line;
@@ -159,7 +176,9 @@ else {
 		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
 	}
 }
+close $thefile;
+}
 
 # Housekeeping:
 $dbh->disconnect;
-close $thefile;
+closedir(DIR);
