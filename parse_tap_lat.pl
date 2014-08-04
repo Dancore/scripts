@@ -1,10 +1,13 @@
 #!/usr/bin/perl -w
 # Parse CSV files with latency measurements, then recalculate for a certain granualarity
 # (currently per minute). The data unit is then submitted to a PgSQL DB.
-#
+# Or; Simply push each line into a database for future processing and presentation.
 
 use strict;
 use DBI;
+
+# bundle data into periods (currently per minute) and recalc measurements, if set:
+my $do_period_calc = 0;
 
 my $filename = "test.csv";
 #$filename = "badfile.csv";
@@ -65,6 +68,38 @@ sub period_report
 	# $dbh->commit;		# required unless AutoCommit is set.
 }
 
+# send one line to the DB:
+sub line2db
+{
+	my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = @_;
+	print " GOT date $T, $tcode, $txid \n";
+	print "nTX was: " . $ntx . "\n";
+	print "avg was: " . $avg . "\n";
+	print "max was: " . $max . "\n";
+	print "min was: " . $min . "\n";
+
+	# Insert line into DB:
+	my $sth = $dbh->prepare("INSERT INTO tx_taplat_data_raw(datetime_col,usercode,transaction_name,avg_resp,max_resp,min_resp,nbr_transactions,gateway,tap_instance) VALUES (?,?,?,?,?,?,?,?,?)");
+	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, "GW", 0);
+	# $dbh->commit;		# required unless AutoCommit is set.
+}
+
+sub clear_table2
+{
+	# empty table when re-running test, avoid filling the DB with repeated data:
+	my $sth = $dbh->prepare("DELETE FROM tx_taplat_data_raw");
+	$sth->execute;
+}
+
+sub clear_table
+{
+	# empty table when re-running test, avoid filling the DB with repeated data:
+	my $sth = $dbh->prepare("DELETE FROM taplat");
+	$sth->execute;
+	$sth = $dbh->prepare("ALTER SEQUENCE id_seq RESTART WITH 1");
+	$sth->execute;
+}
+
 print "Trying to read csv file '$filename'\n";
 open (my $thefile, '<:encoding(utf8)', $filename) or die "ERROR: Failed to open file '$filename' \n";
 
@@ -74,45 +109,56 @@ print "Trying to establish DB connection\n";
 $dbh = DBI->connect("dbi:Pg:dbname=$database", $dbuser, $dbpassword, {RaiseError => 1, AutoCommit => 1})
 	or die "ERROR: Failed to connect to database: $DBI::errstr\n";
 
-# empty table when re-running test, avoid filling the DB with repeated data:
-my $sth = $dbh->prepare("DELETE FROM taplat");
-$sth->execute;
-$sth = $dbh->prepare("ALTER SEQUENCE id_seq RESTART WITH 1");
-$sth->execute;
-
 my $title = <$thefile>;	# first line expected to be title line
 my $lasthour = 0;
 my $lastminute = 0;
 my $lastsecond = 0;
 my $date = 0;
 
-while (my $line = <$thefile>)
-{
-	chomp $line;
-	# Some sanity checks:
-	if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
-		print "WARNING: Failed to read line $. in file '$filename' \n";
-		next;
-	}
-	my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
-	($date, my $time) = split(/ /, $T);
-	my ($hour, $minute, $second) = (split /:/, $time);
-
-	# Detecting start of new measurement period (eg a new minute):
-	if (($hour != $lasthour ) or ($minute != $lastminute)) {
-		if($. > 2) {	# don't report before at least the first row/line (after title) is calc'd.
-			period_report($date, $lasthour, $lastminute, $lastsecond);
+if ($do_period_calc) {
+	clear_table;
+	while (my $line = <$thefile>)
+	{
+		chomp $line;
+		# Some sanity checks:
+		if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
+			print "WARNING: Failed to read line $. in file '$filename' \n";
+			next;
 		}
-		period_reset;
-	}
-	period_calculate($ntx, $avg, $max, $min);
+		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+		($date, my $time) = split(/ /, $T);
+		my ($hour, $minute, $second) = (split /:/, $time);
 
-	$lasthour = $hour;
-	$lastminute = $minute;
-	$lastsecond = $second;
+		# Detecting start of new measurement period (eg a new minute):
+		if (($hour != $lasthour ) or ($minute != $lastminute)) {
+			if($. > 2) {	# don't report before at least the first row/line (after title) is calc'd.
+				period_report($date, $lasthour, $lastminute, $lastsecond);
+			}
+			period_reset;
+		}
+		period_calculate($ntx, $avg, $max, $min);
+
+		$lasthour = $hour;
+		$lastminute = $minute;
+		$lastsecond = $second;
+	}
+	# One last measurment period considered to end with the end of the log file.
+	period_report($date, $lasthour, $lastminute, $lastsecond);
 }
-# One last measurment period considered to end with the end of the log file.
-period_report($date, $lasthour, $lastminute, $lastsecond);
+else {
+	clear_table2;
+	while (my $line = <$thefile>)
+	{
+		chomp $line;
+		# Some sanity checks:
+		if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
+			print "WARNING: Failed to read line $. in file '$filename' \n";
+			next;
+		}
+		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
+	}
+}
 
 # Housekeeping:
 $dbh->disconnect;
