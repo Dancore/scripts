@@ -123,59 +123,59 @@ while (my $filename = readdir(DIR))
 	next unless (-f "$dir/$filename");
 	next unless ($filename =~ m/\.csv$/);
 
-print "Trying to read csv file '$filename'\n";
-open (my $thefile, '<:encoding(utf8)', $filename) or die "ERROR: Failed to open file '$filename' \n";
+	print "Trying to read csv file '$filename'\n";
+	open (my $thefile, '<:encoding(utf8)', $filename) or die "ERROR: Failed to open file '$filename' \n";
 
-my $title = <$thefile>;	# first line expected to be title line
-my $lasthour = 0;
-my $lastminute = 0;
-my $lastsecond = 0;
-my $date = 0;
+	my $title = <$thefile>;	# first line expected to be title line
+	my $lasthour = 0;
+	my $lastminute = 0;
+	my $lastsecond = 0;
+	my $date = 0;
 
-if ($do_period_calc)
-{
-	while (my $line = <$thefile>)
+	if ($do_period_calc)
 	{
-		chomp $line;
-		# Some sanity checks:
-		if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
-			print "WARNING: Failed to read line $. in file '$filename' \n";
-			next;
-		}
-		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
-		($date, my $time) = split(/ /, $T);
-		my ($hour, $minute, $second) = (split /:/, $time);
-
-		# Detecting start of new measurement period (eg a new minute):
-		if (($hour != $lasthour ) or ($minute != $lastminute)) {
-			if($. > 2) {	# don't report before at least the first row/line (after title) is calc'd.
-				period_report($date, $lasthour, $lastminute, $lastsecond);
+		while (my $line = <$thefile>)
+		{
+			chomp $line;
+			# Some sanity checks:
+			if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
+				print "WARNING: Failed to read line $. in file '$filename' \n";
+				next;
 			}
-			period_reset;
-		}
-		period_calculate($ntx, $avg, $max, $min);
+			my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+			($date, my $time) = split(/ /, $T);
+			my ($hour, $minute, $second) = (split /:/, $time);
 
-		$lasthour = $hour;
-		$lastminute = $minute;
-		$lastsecond = $second;
-	}
-	# One last measurment period considered to end with the end of the log file.
-	period_report($date, $lasthour, $lastminute, $lastsecond);
-}
-else
-{
-	while (my $line = <$thefile>)
-	{
-		chomp $line;
-		# Some sanity checks:
-		if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
-			print "WARNING: Failed to read line $. in file '$filename' \n";
-			next;
+			# Detecting start of new measurement period (eg a new minute):
+			if (($hour != $lasthour ) or ($minute != $lastminute)) {
+				if($. > 2) {	# don't report before at least the first row/line (after title) is calc'd.
+					period_report($date, $lasthour, $lastminute, $lastsecond);
+				}
+				period_reset;
+			}
+			period_calculate($ntx, $avg, $max, $min);
+
+			$lasthour = $hour;
+			$lastminute = $minute;
+			$lastsecond = $second;
 		}
-		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
-		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
+		# One last measurment period considered to end with the end of the log file.
+		period_report($date, $lasthour, $lastminute, $lastsecond);
 	}
-}
+	else
+	{
+		while (my $line = <$thefile>)
+		{
+			chomp $line;
+			# Some sanity checks:
+			if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
+				print "WARNING: Failed to read line $. in file '$filename' \n";
+				next;
+			}
+			my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+			line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
+		}
+	}
 close $thefile;
 }
 
