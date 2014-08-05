@@ -5,17 +5,17 @@ ABOUT="Repeat a command in a directory."
 # 2014-08-05 Dan Kopparhed
 ##########################################################################
 THISFILE=$0
-DIR=$1
-CMD=$2
-ITER=$3
+ITER=$1
+DIR=$2
+# CMD=$3
 args=("$@")
 ##########################################################################
 f_usage()
 {
 	cat <<TXT
  $ABOUT
- Usage: ${THISFILE} <dir> <command> <iterations>
- example: $0 $PWD 10
+ Usage: ${THISFILE} <iterations> <dir> <command>
+ example: $0 10 $PWD "ls -la"
 TXT
 }
 ##########################################################################
@@ -24,6 +24,10 @@ if [ -z "$1" ] & [ -z "$2" ] & [ -z "$3" ]; then
 	f_usage
 	exit
 fi
+for ((i=2; i < $#; i++)) {
+	CMD=$CMD"${args[$i]} "
+}
+echo command is \"$CMD\"
 
 # enable users aliases (presumably located in HOME/.bashrc):
 shopt -s expand_aliases
