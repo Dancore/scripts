@@ -4,6 +4,7 @@
 # Or; Simply push each line into a database for future processing and presentation.
 
 use strict;
+use warnings;
 use DBI;
 
 # bundle data into periods (currently per minute) and recalc measurements, if set:
@@ -72,17 +73,14 @@ sub period_report
 # send one line to the DB:
 sub line2db
 {
-	my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = @_;
-	print " GOT date $T, $tcode, $txid, ";
-	print " nTX: " . $ntx;
-	print " avg: " . $avg;
-	print " max: " . $max;
-	print " min: " . $min . "\n";
+	my ($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid) = @_;
+	if (!$gw) { $gw = "n/a"; }
+	if (!$tapid) { $tapid = 0; }
+	# print " GOT date $T, $tcode, $txid, nTX: $ntx, avg: $avg, max: $max, min: $min, gw: $gw, tapid: $tapid\n";
 
 	# Insert line into DB:
 	my $sth = $dbh->prepare("INSERT INTO tx_taplat_data_raw(datetime_col,usercode,transaction_name,avg_resp,max_resp,min_resp,nbr_transactions,gateway,tap_instance) VALUES (?,?,?,?,?,?,?,?,?)");
-	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, "GW", 0);
-	# $dbh->commit;		# required unless AutoCommit is set.
+	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid);
 }
 
 sub clear_table2
@@ -107,7 +105,7 @@ opendir(DIR, $dir) or die $!;
 # Establish DB connection:
 print "Trying to establish DB connection\n";
 # DBI->connect("dbi:Pg:dbname=$dbname;host=$host;port=$port;options=$options;tty=$tty", "$username", "$password");
-$dbh = DBI->connect("dbi:Pg:dbname=$database", $dbuser, $dbpassword, {RaiseError => 1, AutoCommit => 1})
+$dbh = DBI->connect("dbi:Pg:dbname=$database", $dbuser, $dbpassword, {RaiseError => 1, AutoCommit => 0})
 	or die "ERROR: Failed to connect to database: $DBI::errstr\n";
 
 if ($do_period_calc) {
@@ -124,13 +122,14 @@ while (my $filename = readdir(DIR))
 	next unless ($filename =~ m/\.csv$/);
 
 	print "Trying to read csv file '$filename'\n";
-	open (my $thefile, '<:encoding(utf8)', $filename) or die "ERROR: Failed to open file '$filename' \n";
+	open (my $thefile, '<:encoding(utf8)', $filename) or print "ERROR: Failed to open file '$filename' \n";
 
 	my $title = <$thefile>;	# first line expected to be title line
 	my $lasthour = 0;
 	my $lastminute = 0;
 	my $lastsecond = 0;
 	my $date = 0;
+	my $linesparsed = 0;
 
 	if ($do_period_calc)
 	{
@@ -158,6 +157,7 @@ while (my $filename = readdir(DIR))
 			$lasthour = $hour;
 			$lastminute = $minute;
 			$lastsecond = $second;
+			$linesparsed++;
 		}
 		# One last measurment period considered to end with the end of the log file.
 		period_report($date, $lasthour, $lastminute, $lastsecond);
@@ -169,14 +169,20 @@ while (my $filename = readdir(DIR))
 			chomp $line;
 			# Some sanity checks:
 			if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
-				print "WARNING: Failed to read line $. in file '$filename' \n";
+				print "WARNING: Failed to read line $. in file '$filename' (skipping it)\n";
 				next;
 			}
 			my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
 			line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
+			$linesparsed++;
 		}
 	}
-close $thefile;
+	# finally, commit all the lines, if we survived:
+	$dbh->commit; # required unless AutoCommit is set.
+	if ($linesparsed > 0) {
+		print "INFO: successfully read $linesparsed of $. lines in file '$filename'\n";
+	}
+	close $thefile;
 }
 
 # Housekeeping:
