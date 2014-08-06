@@ -4,7 +4,7 @@ ABOUT="Repeat a command in a directory."
 # ----------------------------------------------
 # 2014-08-05 Dan Kopparhed
 ##########################################################################
-THISFILE=$0
+THISFILE=${0##*/}
 ITERATIONS=$1
 DIR=$2
 # CMD=$3
@@ -15,9 +15,9 @@ f_usage()
 	cat <<TXT
  $ABOUT
  Usage: ${THISFILE} {iterations} {dir} {command}
- example: $0 10 $PWD ls -la
+ example: $THISFILE 10 $PWD ls -la
  Tip: use \\\$ITER for the current iteration or \\\$COUNT starting from zero
- example: $0 11 $PWD touch file\\\$COUNT.log
+ example: $THISFILE 11 $PWD touch file\\\$COUNT.log
 TXT
 }
 ##########################################################################
