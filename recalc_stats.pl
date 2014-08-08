@@ -115,34 +115,34 @@ while (my $filename = readdir(DIR))
 	my $date = 0;
 	my $linesparsed = 0;
 
-		while (my $line = <$thefile>)
-		{
-			chomp $line;
-			# Some sanity checks:
-			if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
-				print "WARNING: Failed to read line $. in file '$filename' \n";
-				next;
-			}
-			my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
-			($date, my $time) = split(/ /, $T);
-			my ($hour, $minute, $second) = (split /:/, $time);
-
-			# Detecting start of new measurement period (eg a new minute):
-			if (($hour != $lasthour ) or ($minute != $lastminute)) {
-				if($. > 2) {	# don't report before at least the first row/line (after title) is calc'd.
-					period_report($date, $lasthour, $lastminute, $lastsecond);
-				}
-				period_reset;
-			}
-			period_calculate($ntx, $avg, $max, $min);
-
-			$lasthour = $hour;
-			$lastminute = $minute;
-			$lastsecond = $second;
-			$linesparsed++;
+	while (my $line = <$thefile>)
+	{
+		chomp $line;
+		# Some sanity checks:
+		if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
+			print "WARNING: Failed to read line $. in file '$filename' \n";
+			next;
 		}
-		# One last measurment period considered to end with the end of the log file.
-		period_report($date, $lasthour, $lastminute, $lastsecond);
+		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+		($date, my $time) = split(/ /, $T);
+		my ($hour, $minute, $second) = (split /:/, $time);
+
+		# Detecting start of new measurement period (eg a new minute):
+		if (($hour != $lasthour ) or ($minute != $lastminute)) {
+			if($. > 2) {	# don't report before at least the first row/line (after title) is calc'd.
+				period_report($date, $lasthour, $lastminute, $lastsecond);
+			}
+			period_reset;
+		}
+		period_calculate($ntx, $avg, $max, $min);
+
+		$lasthour = $hour;
+		$lastminute = $minute;
+		$lastsecond = $second;
+		$linesparsed++;
+	}
+	# One last measurment period considered to end with the end of the log file.
+	period_report($date, $lasthour, $lastminute, $lastsecond);
 
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
