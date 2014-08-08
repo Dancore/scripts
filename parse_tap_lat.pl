@@ -7,17 +7,15 @@ use strict;
 use warnings;
 use DBI;
 
-# bundle data into periods (currently per minute) and recalc measurements, if set:
-my $do_period_calc = 0;
+my $configuration = 'configuration.pl';
+my $localconfiguration = 'configuration.local.pl';
 
-my $dir = "./";
-# my $filename = "test.csv";
-#$filename = "badfile.csv";
-my $database = "test";
-my $dbuser = "testuser";
-my $dbpassword = "";
-# $dbhost = "";
-# $dbport = "";
+if (-f $configuration) { require "$configuration"; }
+else { print "ERROR: Configuration file not found. Quitting.\n"; exit 1; }
+if (-f $localconfiguration) { require "$localconfiguration"; }
+else { print "INFO: Local configuration file not found. Trying anyway.\n"; }
+# import the settings from config into this (main) namespace/package:
+our ($do_period_calc, $dirpath, $database_name, $database_user, $database_password, $database_host, $database_table);
 
 # Database handle object:
 my $dbh;
@@ -65,7 +63,7 @@ sub period_report
 	# print " self is $self \n";
 
 	# Insert period report into DB:
-	my $sth = $dbh->prepare("INSERT INTO taplat(date,txavg,txmax,txmin,ntx) VALUES (?,?,?,?,?)");
+	my $sth = $dbh->prepare("INSERT INTO $database_table(date,txavg,txmax,txmin,ntx) VALUES (?,?,?,?,?)");
 	$sth->execute("$date $lasthour:$lastminute:00", $period{avg}, $period{max}, $period{min}, $period{tx});
 	# $dbh->commit;		# required unless AutoCommit is set.
 }
@@ -79,34 +77,41 @@ sub line2db
 	# print " GOT date $T, $tcode, $txid, nTX: $ntx, avg: $avg, max: $max, min: $min, gw: $gw, tapid: $tapid\n";
 
 	# Insert line into DB:
-	my $sth = $dbh->prepare("INSERT INTO tx_taplat_data_raw(datetime_col,usercode,transaction_name,avg_resp,max_resp,min_resp,nbr_transactions,gateway,tap_instance) VALUES (?,?,?,?,?,?,?,?,?)");
+	my $sth = $dbh->prepare("INSERT INTO $database_table(datetime_col,usercode,transaction_name,avg_resp,max_resp,min_resp,nbr_transactions,gateway,tap_instance) VALUES (?,?,?,?,?,?,?,?,?)");
 	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid);
 }
 
 sub clear_table2
 {
 	# empty table when re-running test, avoid filling the DB with repeated data:
-	my $sth = $dbh->prepare("DELETE FROM tx_taplat_data_raw");
+	my $sth = $dbh->prepare("DELETE FROM $database_table");
 	$sth->execute;
 }
 
 sub clear_table
 {
 	# empty table when re-running test, avoid filling the DB with repeated data:
-	my $sth = $dbh->prepare("DELETE FROM taplat");
+	my $sth = $dbh->prepare("DELETE FROM $database_table");
 	$sth->execute;
 	$sth = $dbh->prepare("ALTER SEQUENCE id_seq RESTART WITH 1");
 	$sth->execute;
 }
 
-print "Trying to open dir '$dir'\n";
-opendir(DIR, $dir) or die $!;
+sub ConnectDB
+{
+	# print "Trying to establish DB connection\n";
+	# DBI->connect("dbi:Pg:dbname=$dbname;host=$host;port=$port;options=$options;tty=$tty", "$username", "$password");
+	$dbh = DBI->connect("DBI:Pg:dbname=$database_name;host=$database_host", $database_user, $database_password, {RaiseError => 1, AutoCommit => 0})
+	or die "ERROR: Failed to connect to database: $DBI::errstr\n";
+}
+###################################################################################
+
+# print "Trying to open dir '$dirpath'\n";
+opendir(DIR, $dirpath) or die $!;
 
 # Establish DB connection:
-print "Trying to establish DB connection\n";
-# DBI->connect("dbi:Pg:dbname=$dbname;host=$host;port=$port;options=$options;tty=$tty", "$username", "$password");
-$dbh = DBI->connect("dbi:Pg:dbname=$database", $dbuser, $dbpassword, {RaiseError => 1, AutoCommit => 0})
-	or die "ERROR: Failed to connect to database: $DBI::errstr\n";
+ConnectDB;
+print "INFO: Successfully connected to database\n";
 
 if ($do_period_calc) {
 	clear_table;
@@ -118,10 +123,10 @@ else {
 while (my $filename = readdir(DIR))
 {
 	# only csv files:
-	next unless (-f "$dir/$filename");
+	next unless (-f "$dirpath/$filename");
 	next unless ($filename =~ m/\.csv$/);
 
-	print "Trying to read csv file '$filename'\n";
+	# print "Trying to read csv file '$filename'\n";
 	open (my $thefile, '<:encoding(utf8)', $filename) or print "ERROR: Failed to open file '$filename' \n";
 
 	my $title = <$thefile>;	# first line expected to be title line
@@ -180,7 +185,7 @@ while (my $filename = readdir(DIR))
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
 	if ($linesparsed > 0) {
-		print "INFO: successfully read $linesparsed of $. lines in file '$filename'\n";
+		print "INFO: successfully read lines $linesparsed of $. in file '$filename'\n";
 	}
 	close $thefile;
 }
