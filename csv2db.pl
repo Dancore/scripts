@@ -77,7 +77,7 @@ sub line2db
 	# print " GOT date $T, $tcode, $txid, nTX: $ntx, avg: $avg, max: $max, min: $min, gw: $gw, tapid: $tapid\n";
 
 	# Insert line into DB:
-	my $sth = $dbh->prepare("INSERT INTO $database_table(datetime_col,usercode,transaction_name,avg_resp,max_resp,min_resp,nbr_transactions,gateway,tap_instance) VALUES (?,?,?,?,?,?,?,?,?)");
+	my $sth = $dbh->prepare("INSERT INTO $database_table VALUES (?,?,?,?,?,?,?,?,?)");
 	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid);
 }
 
