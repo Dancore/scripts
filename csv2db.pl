@@ -33,7 +33,7 @@ sub line2db
 	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid);
 }
 
-sub clear_table2
+sub clear_table
 {
 	# empty table when re-running test, avoid filling the DB with repeated data:
 	my $sth = $dbh->prepare("DELETE FROM $database_table");
@@ -56,7 +56,7 @@ opendir(DIR, $dirpath) or die "ERROR: No such directory '$dirpath'. Quitting.\n"
 ConnectDB;
 print "INFO: Successfully connected to database\n";
 
-clear_table2;
+clear_table;
 
 while (my $filename = readdir(DIR))
 {
@@ -78,18 +78,18 @@ while (my $filename = readdir(DIR))
 	my $date = 0;
 	my $linesparsed = 0;
 
-		while (my $line = <$thefile>)
-		{
-			chomp $line;
-			# Some sanity checks:
-			if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
-				print "WARNING: Failed to read line $. in file '$filename' (skipping it)\n";
-				next;
-			}
-			my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
-			line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
-			$linesparsed++;
+	while (my $line = <$thefile>)
+	{
+		chomp $line;
+		# Some sanity checks:
+		if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
+			print "WARNING: Failed to read line $. in file '$filename' (skipping it)\n";
+			next;
 		}
+		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
+		$linesparsed++;
+	}
 
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
