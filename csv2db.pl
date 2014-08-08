@@ -20,54 +20,6 @@ our ($do_period_calc, $dirpath, $database_name, $database_user, $database_passwo
 # Database handle object:
 my $dbh;
 
-# period data structure
-my %period = (
-	samples => 0,
-	tx => 0,
-	ackavg => 0,
-	avg => 0,
-	max => 0,
-	min => 0
-	);
-
-sub period_reset
-{
-	foreach my $k (keys %period) {
-		$period{$k} = 0;
-	}
-	$period{min} = 9999999;
-}
-
-sub period_calculate
-{
-	my ($ntx, $avg, $max, $min) = @_;
-	$period{samples}++;
-	$period{tx} += $ntx;
-	$period{ackavg} += $avg;
-	if ($max > $period{max}) {$period{max} = $max;}
-	if ($min < $period{min}) {$period{min} = $min;}
-	$period{avg} = $period{ackavg} / $period{samples};
-}
-
-# report one completed period:
-sub period_report
-{
-	# my $self = shift;
-	my ($date, $lasthour, $lastminute, $lastsecond) = @_;
-	print " GOT date $date $lasthour:$lastminute \n";
-	print "nr of samples during period ($lasthour:$lastminute:$lastsecond) was: " . $period{samples} . "\n";
-	print "nr of TX during period was: " . $period{tx} . "\n";
-	print "avg of period was: "; printf("%.2f\n", $period{avg});
-	print "max of period was: " . $period{max} . "\n";
-	print "min of period was: " . $period{min} . "\n";
-	# print " self is $self \n";
-
-	# Insert period report into DB:
-	my $sth = $dbh->prepare("INSERT INTO $database_table(date,txavg,txmax,txmin,ntx) VALUES (?,?,?,?,?)");
-	$sth->execute("$date $lasthour:$lastminute:00", $period{avg}, $period{max}, $period{min}, $period{tx});
-	# $dbh->commit;		# required unless AutoCommit is set.
-}
-
 # send one line to the DB:
 sub line2db
 {
@@ -88,15 +40,6 @@ sub clear_table2
 	$sth->execute;
 }
 
-sub clear_table
-{
-	# empty table when re-running test, avoid filling the DB with repeated data:
-	my $sth = $dbh->prepare("DELETE FROM $database_table");
-	$sth->execute;
-	$sth = $dbh->prepare("ALTER SEQUENCE id_seq RESTART WITH 1");
-	$sth->execute;
-}
-
 sub ConnectDB
 {
 	# print "Trying to establish DB connection\n";
@@ -113,12 +56,7 @@ opendir(DIR, $dirpath) or die "ERROR: No such directory '$dirpath'. Quitting.\n"
 ConnectDB;
 print "INFO: Successfully connected to database\n";
 
-if ($do_period_calc) {
-	clear_table;
-}
-else {
-	clear_table2;
-}
+clear_table2;
 
 while (my $filename = readdir(DIR))
 {
@@ -140,39 +78,6 @@ while (my $filename = readdir(DIR))
 	my $date = 0;
 	my $linesparsed = 0;
 
-	if ($do_period_calc)
-	{
-		while (my $line = <$thefile>)
-		{
-			chomp $line;
-			# Some sanity checks:
-			if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
-				print "WARNING: Failed to read line $. in file '$filename' \n";
-				next;
-			}
-			my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
-			($date, my $time) = split(/ /, $T);
-			my ($hour, $minute, $second) = (split /:/, $time);
-
-			# Detecting start of new measurement period (eg a new minute):
-			if (($hour != $lasthour ) or ($minute != $lastminute)) {
-				if($. > 2) {	# don't report before at least the first row/line (after title) is calc'd.
-					period_report($date, $lasthour, $lastminute, $lastsecond);
-				}
-				period_reset;
-			}
-			period_calculate($ntx, $avg, $max, $min);
-
-			$lasthour = $hour;
-			$lastminute = $minute;
-			$lastsecond = $second;
-			$linesparsed++;
-		}
-		# One last measurment period considered to end with the end of the log file.
-		period_report($date, $lasthour, $lastminute, $lastsecond);
-	}
-	else
-	{
 		while (my $line = <$thefile>)
 		{
 			chomp $line;
@@ -185,7 +90,7 @@ while (my $filename = readdir(DIR))
 			line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
 			$linesparsed++;
 		}
-	}
+
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
 	if ($linesparsed > 0) {
