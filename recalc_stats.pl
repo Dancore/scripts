@@ -68,26 +68,6 @@ sub period_report
 	# $dbh->commit;		# required unless AutoCommit is set.
 }
 
-# send one line to the DB:
-sub line2db
-{
-	my ($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid) = @_;
-	if (!$gw) { $gw = "n/a"; }
-	if (!$tapid) { $tapid = 0; }
-	# print " GOT date $T, $tcode, $txid, nTX: $ntx, avg: $avg, max: $max, min: $min, gw: $gw, tapid: $tapid\n";
-
-	# Insert line into DB:
-	my $sth = $dbh->prepare("INSERT INTO $database_table VALUES (?,?,?,?,?,?,?,?,?)");
-	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid);
-}
-
-sub clear_table2
-{
-	# empty table when re-running test, avoid filling the DB with repeated data:
-	my $sth = $dbh->prepare("DELETE FROM $database_table");
-	$sth->execute;
-}
-
 sub clear_table
 {
 	# empty table when re-running test, avoid filling the DB with repeated data:
@@ -113,12 +93,7 @@ opendir(DIR, $dirpath) or die "ERROR: No such directory '$dirpath'. Quitting.\n"
 ConnectDB;
 print "INFO: Successfully connected to database\n";
 
-if ($do_period_calc) {
-	clear_table;
-}
-else {
-	clear_table2;
-}
+clear_table;
 
 while (my $filename = readdir(DIR))
 {
@@ -140,8 +115,6 @@ while (my $filename = readdir(DIR))
 	my $date = 0;
 	my $linesparsed = 0;
 
-	if ($do_period_calc)
-	{
 		while (my $line = <$thefile>)
 		{
 			chomp $line;
@@ -170,22 +143,7 @@ while (my $filename = readdir(DIR))
 		}
 		# One last measurment period considered to end with the end of the log file.
 		period_report($date, $lasthour, $lastminute, $lastsecond);
-	}
-	else
-	{
-		while (my $line = <$thefile>)
-		{
-			chomp $line;
-			# Some sanity checks:
-			if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
-				print "WARNING: Failed to read line $. in file '$filename' (skipping it)\n";
-				next;
-			}
-			my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
-			line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
-			$linesparsed++;
-		}
-	}
+
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
 	if ($linesparsed > 0) {
