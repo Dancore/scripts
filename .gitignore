@@ -1,5 +1,6 @@
 *.sublime-project
 *.sublime-workspace
+*.local*
 /blib/
 /.build/
 _build/
@@ -19,4 +20,3 @@ nytprof.out
 /pm_to_blib
 *.o
 *.bs
-
