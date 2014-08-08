@@ -107,7 +107,7 @@ sub ConnectDB
 ###################################################################################
 
 # print "Trying to open dir '$dirpath'\n";
-opendir(DIR, $dirpath) or die $!;
+opendir(DIR, $dirpath) or die "ERROR: No such directory '$dirpath'. Quitting.\n";
 
 # Establish DB connection:
 ConnectDB;
