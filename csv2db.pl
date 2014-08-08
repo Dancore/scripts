@@ -122,12 +122,16 @@ else {
 
 while (my $filename = readdir(DIR))
 {
+	my $thefile;
 	# only csv files:
 	next unless (-f "$dirpath/$filename");
 	next unless ($filename =~ m/\.csv$/);
 
 	# print "Trying to read csv file '$filename'\n";
-	open (my $thefile, '<:encoding(utf8)', $filename) or print "ERROR: Failed to open file '$filename' \n";
+	if (!open ($thefile, '<:encoding(utf8)', $filename)) {
+		print "ERROR: Failed to open file '$filename'.\n";
+		next;
+	}
 
 	my $title = <$thefile>;	# first line expected to be title line
 	my $lasthour = 0;
