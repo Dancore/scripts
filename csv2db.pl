@@ -6,6 +6,8 @@
 use strict;
 use warnings;
 use DBI;
+# For execution performance measurements:
+use Time::HiRes qw(usleep ualarm gettimeofday tv_interval);
 
 my $configuration = 'configuration.pl';
 my $localconfiguration = 'configuration.local.pl';
@@ -47,6 +49,10 @@ sub ConnectDB
 	$dbh = DBI->connect("DBI:Pg:dbname=$database_name;host=$database_host", $database_user, $database_password, {RaiseError => 1, AutoCommit => 0})
 	or die "ERROR: Failed to connect to database: $DBI::errstr\n";
 }
+
+sub Max { if ($_[0] > $_[1]) {print "1 $_[0] 2 $_[1] "; return $_[0];} }
+sub Min { if ($_[0] < $_[1]) {return $_[0];} }
+
 ###################################################################################
 
 # print "Trying to open dir '$dirpath'\n";
@@ -55,12 +61,15 @@ opendir(DIR, $dirpath) or die "ERROR: No such directory '$dirpath'. Quitting.\n"
 # Establish DB connection:
 ConnectDB;
 print "INFO: Successfully connected to database\n";
-
 clear_table;
+my ($t0, $t1, $t0_t1, $max, $min) = 0;
 
 while (my $filename = readdir(DIR))
 {
 	my $thefile;
+	$max = 0.0;
+	$min = 99999999.9;
+
 	# only csv files:
 	next unless (-f "$dirpath/$filename");
 	next unless ($filename =~ m/\.csv$/);
@@ -87,9 +96,15 @@ while (my $filename = readdir(DIR))
 			next;
 		}
 		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+		$t0 = [gettimeofday];
 		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
+		$t1 = [gettimeofday];
+		$t0_t1 = tv_interval($t0, $t1);
+		$max = Max($max, $t0_t1);
+		$min = Min($max, $t0_t1);
 		$linesparsed++;
 	}
+	print "line2db MAX $max s, MIN $min s \n";
 
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
