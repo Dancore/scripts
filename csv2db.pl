@@ -128,7 +128,7 @@ while (my $filename = readdir(DIR))
 	next unless ($filename =~ m/\.csv$/);
 
 	# print "Trying to read csv file '$filename'\n";
-	if (!open ($thefile, '<:encoding(utf8)', $filename)) {
+	if (!open ($thefile, '<:encoding(utf8)', $dirpath."/".$filename)) {
 		print "ERROR: Failed to open file '$filename'.\n";
 		next;
 	}
