@@ -30,11 +30,14 @@ my %imonths;
 # print "test $imonths{\"Jan\"} $imonths{\"Dec\"} \n"; exit;
 
 my $currdate = strftime "%Y%m%d", localtime;
+my $prevdate = strftime "%Y%m%d", localtime(time() - 86400);
 # my $currtime = strftime "%H:%M:%S", localtime;
 my $currtime = strftime "%H:%M", localtime;
+my $prevtime = strftime "%H:%M", localtime(time() - 60);
 print "Current DATE&TIME: $currdate $currtime Epoc: ".time()."\n";
-$currdate="20140716"; # testing
-my $prevdate="201401"; # testing
+print "Previous DATE&TIME: $prevdate $prevtime \n";
+$currdate="20140717"; # testing
+$prevdate="20140716"; # testing
 
 # Separated DBI prepare call for increased performance:
 sub line2db_prepare
@@ -129,8 +132,12 @@ while (my $filename = readdir(DIR))
 		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
 		($linedate, my $linetime) = split(/ /, $T);
 		my ($lineday, $linemonth, $lineyear) = (split /-/, $linedate);
-		$linemonth = $imonths{$linemonth};
-		# print "Line $lineyear $linemonth $lineday \n";
+		# $linemonth = $imonths{$linemonth};
+		$linemonth = sprintf("%02d", $imonths{$linemonth}); # two digit
+		$linedate = $lineyear.$linemonth.$lineday;
+		# print "Line $lineyear $linemonth $lineday ($linedate) ($currdate)\n";
+		next unless ($linedate eq $currdate);
+
 		my ($hour, $minute, $second) = (split /:/, $linetime);
 
 		$t0 = [gettimeofday];
