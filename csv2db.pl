@@ -17,9 +17,7 @@ else { print "ERROR: Configuration file not found. Quitting.\n"; exit 1; }
 if (-f $localconfiguration) { require "$localconfiguration"; }
 else { print "INFO: Local configuration file not found. Trying anyway.\n"; }
 # import the settings from config into this (main) namespace/package:
-our ($do_period_calc, $dirpath, $database_name, $database_user, $database_password, $database_host, $database_table);
-
-my $perflogfilename = 'performance.log';
+our ($do_period_calc, $dirpath, $database_name, $database_user, $database_password, $database_host, $database_table, $perflogfilename);
 
 # Database handle object:
 my $dbh;
