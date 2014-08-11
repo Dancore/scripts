@@ -4,6 +4,7 @@
 use strict;
 use warnings;
 use DBI;
+use POSIX qw(strftime);
 # For execution performance measurements:
 use Time::HiRes qw(usleep ualarm gettimeofday tv_interval);
 
@@ -20,6 +21,13 @@ our ($do_period_calc, $dirpath, $database_name, $database_user, $database_passwo
 # Database handle object:
 my $dbh;
 my $sth;
+
+my $currdate = strftime "%Y%m%d", localtime;
+# my $currtime = strftime "%H:%M:%S", localtime;
+my $currtime = strftime "%H:%M", localtime;
+print "Current DATE&TIME: $currdate $currtime Epoc: ".time()."\n";
+$currdate="20140716"; # testing
+my $prevdate="201401"; # testing
 
 # Separated DBI prepare call for increased performance:
 sub line2db_prepare
@@ -42,6 +50,7 @@ sub clear_table
 	# empty table when re-running test, avoid filling the DB with repeated data:
 	my $sth = $dbh->prepare("DELETE FROM $database_table");
 	$sth->execute;
+	# print "Cleared table\n";
 }
 
 sub ConnectDB
@@ -86,6 +95,7 @@ while (my $filename = readdir(DIR))
 	# only csv files:
 	next unless (-f "$dirpath/$filename");
 	next unless ($filename =~ m/\.csv$/);
+	if ($filename !~ m/$currdate/ && $filename !~ m/$prevdate/ ) {next;}
 
 	# print "Trying to read csv file '$filename'\n";
 	if (!open ($thefile, '<:encoding(utf8)', $dirpath."/".$filename)) {
