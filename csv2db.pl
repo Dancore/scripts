@@ -50,8 +50,8 @@ sub ConnectDB
 	or die "ERROR: Failed to connect to database: $DBI::errstr\n";
 }
 
-sub Max { if ($_[0] > $_[1]) {print "1 $_[0] 2 $_[1] "; return $_[0];} }
-sub Min { if ($_[0] < $_[1]) {return $_[0];} }
+sub Max { if($_[0] > $_[1]) {return $_[0];} return $_[1]; }
+sub Min { if($_[0] < $_[1]) {return $_[0];} return $_[1]; }
 
 ###################################################################################
 
@@ -62,13 +62,13 @@ opendir(DIR, $dirpath) or die "ERROR: No such directory '$dirpath'. Quitting.\n"
 ConnectDB;
 print "INFO: Successfully connected to database\n";
 clear_table;
-my ($t0, $t1, $t0_t1, $max, $min) = 0;
+my ($t0, $t1, $t0_t1, $perfmax, $perfmin) = 0;
 
 while (my $filename = readdir(DIR))
 {
 	my $thefile;
-	$max = 0.0;
-	$min = 99999999.9;
+	$perfmax = 0;
+	$perfmin = 99999999;
 
 	# only csv files:
 	next unless (-f "$dirpath/$filename");
@@ -100,11 +100,11 @@ while (my $filename = readdir(DIR))
 		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
 		$t1 = [gettimeofday];
 		$t0_t1 = tv_interval($t0, $t1);
-		$max = Max($max, $t0_t1);
-		$min = Min($max, $t0_t1);
+		$perfmax = Max($t0_t1, $perfmax);
+		$perfmin = Min($t0_t1, $perfmin);
 		$linesparsed++;
 	}
-	print "line2db MAX $max s, MIN $min s \n";
+	print "line2db MAX $perfmax s, MIN $perfmin s \n";
 
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
