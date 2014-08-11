@@ -181,10 +181,15 @@ while (my $filename = readdir(DIR))
 
 		($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
 		# Pick up where we left off, i.e. skip the lines we already saved:
-		if ($linehour < $lasthour && $lineminute <= $lastminute) {next;}
+		if ($linehour < $lasthour) {next;}
+		if ($linehour == $lasthour) {
+			if ($lineminute <= $lastminute) {next;}
+		}
 		# Only save completed minutes. If the log has caught up with current time,
 		# it means we have reached the limit for now:
-		if ($linehour >= $currhour && $lineminute >= $currminute) {last;}
+		if ($linehour >= $currhour) {
+			if ($lineminute >= $currminute) {last;}
+		}
 
 		$t0 = [gettimeofday];
 		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
