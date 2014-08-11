@@ -19,6 +19,13 @@ our ($do_period_calc, $dirpath, $database_name, $database_user, $database_passwo
 
 # Database handle object:
 my $dbh;
+my $sth;
+
+# Separated DBI prepare call for increased performance:
+sub line2db_prepare
+{
+	$sth = $dbh->prepare("INSERT INTO $database_table VALUES (?,?,?,?,?,?,?,?,?)");
+}
 
 # send one line to the DB:
 sub line2db
@@ -26,10 +33,7 @@ sub line2db
 	my ($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid) = @_;
 	if (!$gw) { $gw = "n/a"; }
 	if (!$tapid) { $tapid = 0; }
-	# print " GOT date $T, $tcode, $txid, nTX: $ntx, avg: $avg, max: $max, min: $min, gw: $gw, tapid: $tapid\n";
-
 	# Insert line into DB:
-	my $sth = $dbh->prepare("INSERT INTO $database_table VALUES (?,?,?,?,?,?,?,?,?)");
 	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid);
 }
 
@@ -66,6 +70,7 @@ if (!open ($perflogfile, '>>:encoding(utf8)', $perflogfilename)) {
 ConnectDB;
 print "INFO: Successfully connected to database\n";
 clear_table;
+line2db_prepare;
 my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $startstamp) = 0;
 
 while (my $filename = readdir(DIR))
@@ -116,13 +121,14 @@ while (my $filename = readdir(DIR))
 	$ft1 = [gettimeofday];
 	$perffile = tv_interval($ft0, $ft1);
 	if( $perffile > 0.00005 ) {
-		print "time $startstamp, perffile $perffile s\n";
+		print "Time: $startstamp, perffile: $perffile s, ";
 		print { $perflogfile } "$startstamp; $perffile; $.; ";
 
 		if( $perfmax > 0) {
-			print "line2db MAX $perfmax s, MIN $perfmin s\n";
+			print "line2db MAX: $perfmax s, MIN: $perfmin s";
 			print { $perflogfile } "$perfmax; $perfmin; ";
 		}
+		print "\n";
 		print { $perflogfile } "\n";
 	}
 
