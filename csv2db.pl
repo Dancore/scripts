@@ -1,7 +1,5 @@
 #!/usr/bin/perl -w
-# Parse CSV files with latency measurements, then recalculate for a certain granualarity
-# (currently per minute). The data unit is then submitted to a PgSQL DB.
-# Or; Simply push each line into a database for future processing and presentation.
+# Parse CSV and simply push each line into a database for future processing and presentation.
 
 use strict;
 use warnings;
