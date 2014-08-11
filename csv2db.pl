@@ -22,6 +22,13 @@ our ($do_period_calc, $dirpath, $database_name, $database_user, $database_passwo
 my $dbh;
 my $sth;
 
+my @months = qw( Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec );
+# my @days = qw(Sun Mon Tue Wed Thu Fri Sat Sun);
+# hash index for looking up month number by month name:
+my %imonths;
+@imonths{@months} = (1..($#months+1));
+# print "test $imonths{\"Jan\"} $imonths{\"Dec\"} \n"; exit;
+
 my $currdate = strftime "%Y%m%d", localtime;
 # my $currtime = strftime "%H:%M:%S", localtime;
 my $currtime = strftime "%H:%M", localtime;
@@ -92,7 +99,7 @@ while (my $filename = readdir(DIR))
 	my ($starttime_s, $starttime_us) = gettimeofday();
 	$startstamp = "$starttime_s.$starttime_us";
 
-	# only csv files:
+	# only csv files and only logfiles with "fresh" data:
 	next unless (-f "$dirpath/$filename");
 	next unless ($filename =~ m/\.csv$/);
 	if ($filename !~ m/$currdate/ && $filename !~ m/$prevdate/ ) {next;}
@@ -107,7 +114,7 @@ while (my $filename = readdir(DIR))
 	my $lasthour = 0;
 	my $lastminute = 0;
 	my $lastsecond = 0;
-	my $date = 0;
+	my $linedate = 0;
 	my $linesparsed = 0;
 
 	$ft0 = [gettimeofday];
@@ -120,6 +127,12 @@ while (my $filename = readdir(DIR))
 			next;
 		}
 		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+		($linedate, my $linetime) = split(/ /, $T);
+		my ($lineday, $linemonth, $lineyear) = (split /-/, $linedate);
+		$linemonth = $imonths{$linemonth};
+		# print "Line $lineyear $linemonth $lineday \n";
+		my ($hour, $minute, $second) = (split /:/, $linetime);
+
 		$t0 = [gettimeofday];
 		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
 		$t1 = [gettimeofday];
