@@ -29,13 +29,23 @@ my %imonths;
 @imonths{@months} = (1..($#months+1));
 # print "test $imonths{\"Jan\"} $imonths{\"Dec\"} \n"; exit;
 
-my $currdate = strftime "%Y%m%d", localtime;
-my $prevdate = strftime "%Y%m%d", localtime(time() - 86400);
+my $curryear = strftime "%Y", localtime;
+my $currmonth = strftime "%m", localtime;
+my $currday = strftime "%d", localtime;
+my $currdate = $curryear.$currmonth.$currday;
+my $prevyear = strftime "%Y", localtime(time() - 86400);
+my $prevmonth = strftime "%m", localtime(time() - 86400);
+my $prevday = strftime "%d", localtime(time() - 86400);
+my $prevdate = $prevyear.$prevmonth.$prevday;
 # my $currtime = strftime "%H:%M:%S", localtime;
-my $currtime = strftime "%H:%M", localtime;
+my $currhour = strftime "%H", localtime;
+my $currminute = strftime "%M", localtime;
 my $prevtime = strftime "%H:%M", localtime(time() - 60);
-print "Current DATE&TIME: $currdate $currtime Epoc: ".time()."\n";
+print "Current DATE&TIME: $currdate $currhour$currminute Epoc: ".time()."\n";
 print "Previous DATE&TIME: $prevdate $prevtime \n";
+$currmonth = 07; #testing
+$currday = 17; #testing
+$prevday = 16; #testing
 $currdate="20140717"; # testing
 $prevdate="20140716"; # testing
 
@@ -132,13 +142,12 @@ while (my $filename = readdir(DIR))
 		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
 		($linedate, my $linetime) = split(/ /, $T);
 		my ($lineday, $linemonth, $lineyear) = (split /-/, $linedate);
-		# $linemonth = $imonths{$linemonth};
-		$linemonth = sprintf("%02d", $imonths{$linemonth}); # two digit
-		$linedate = $lineyear.$linemonth.$lineday;
-		# print "Line $lineyear $linemonth $lineday ($linedate) ($currdate)\n";
-		next unless ($linedate eq $currdate);
+		$linemonth = $imonths{$linemonth};
+		next unless ($lineyear == $curryear || $lineyear == $prevyear);
+		next unless ($linemonth == $currmonth || $linemonth == $prevyear);
+		next unless ($lineday == $currday || $lineday == $prevyear);
 
-		my ($hour, $minute, $second) = (split /:/, $linetime);
+		my ($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
 
 		$t0 = [gettimeofday];
 		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
