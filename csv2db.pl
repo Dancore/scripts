@@ -19,6 +19,8 @@ else { print "INFO: Local configuration file not found. Trying anyway.\n"; }
 # import the settings from config into this (main) namespace/package:
 our ($do_period_calc, $dirpath, $database_name, $database_user, $database_password, $database_host, $database_table);
 
+my $perflogfilename = 'performance.log';
+
 # Database handle object:
 my $dbh;
 
@@ -58,17 +60,27 @@ sub Min { if($_[0] < $_[1]) {return $_[0];} return $_[1]; }
 # print "Trying to open dir '$dirpath'\n";
 opendir(DIR, $dirpath) or die "ERROR: No such directory '$dirpath'. Quitting.\n";
 
+my $perflogfile;
+# print "Trying to open log file '$perflogfilename'\n";
+if (!open ($perflogfile, '>>:encoding(utf8)', $perflogfilename)) {
+	print "ERROR: Failed to open logfile '$perflogfilename'.\n";
+}
+
 # Establish DB connection:
 ConnectDB;
 print "INFO: Successfully connected to database\n";
 clear_table;
-my ($t0, $t1, $t0_t1, $perfmax, $perfmin) = 0;
+my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $startstamp) = 0;
 
 while (my $filename = readdir(DIR))
 {
 	my $thefile;
 	$perfmax = 0;
 	$perfmin = 99999999;
+	$perffilemax = 0;
+	$perffilemin = 99999999;
+	my ($starttime_s, $starttime_us) = gettimeofday();
+	$startstamp = "$starttime_s.$starttime_us";
 
 	# only csv files:
 	next unless (-f "$dirpath/$filename");
@@ -87,6 +99,7 @@ while (my $filename = readdir(DIR))
 	my $date = 0;
 	my $linesparsed = 0;
 
+	$ft0 = [gettimeofday];
 	while (my $line = <$thefile>)
 	{
 		chomp $line;
@@ -104,7 +117,18 @@ while (my $filename = readdir(DIR))
 		$perfmin = Min($t0_t1, $perfmin);
 		$linesparsed++;
 	}
-	print "line2db MAX $perfmax s, MIN $perfmin s \n";
+	$ft1 = [gettimeofday];
+	$perffile = tv_interval($ft0, $ft1);
+	if( $perffile > 0.00005 ) {
+		print "time $startstamp, perffile $perffile s\n";
+		print { $perflogfile } "$startstamp; $perffile; $.; ";
+
+		if( $perfmax > 0) {
+			print "line2db MAX $perfmax s, MIN $perfmin s\n";
+			print { $perflogfile } "$perfmax; $perfmin; ";
+		}
+		print { $perflogfile } "\n";
+	}
 
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
@@ -117,3 +141,4 @@ while (my $filename = readdir(DIR))
 # Housekeeping:
 $dbh->disconnect;
 closedir(DIR);
+close $perflogfile;
