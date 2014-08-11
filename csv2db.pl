@@ -51,6 +51,29 @@ $currminute = 20; #testing
 $currdate="20140717"; # testing
 $prevdate="20140716"; # testing
 
+my $database_table_latest = 'taplat_latest';
+
+# Remember what minute we have processed up to, so we can avoid doing it again:
+sub setlastdbtime
+{
+	# my $sth = $dbh->prepare("UPDATE $database_table_latest SET timestamp=? WHERE id=1");
+	my $sth = $dbh->prepare("DELETE FROM $database_table_latest");
+	$sth->execute;
+	$sth = $dbh->prepare("INSERT INTO $database_table_latest VALUES (?,?)");
+	$sth->execute(1, $_[0]);
+	$sth->finish;
+}
+sub getlastdbtime
+{
+	my $sth = $dbh->prepare("SELECT * FROM $database_table_latest");
+	$sth->execute;
+	my @row = $sth->fetchrow_array();
+	$sth->finish;
+	# print "row $#row \n";
+	if($#row < 0) {return 0;}
+	return $row[1];
+}
+
 # Separated DBI prepare call for increased performance:
 sub line2db_prepare
 {
@@ -100,6 +123,10 @@ if (!open ($perflogfile, '>>:encoding(utf8)', $perflogfilename)) {
 # Establish DB connection:
 ConnectDB;
 print "INFO: Successfully connected to database\n";
+my $lastts = getlastdbtime;
+my $lasthour = strftime "%H", localtime($lastts);
+my $lastminute = strftime "%M", localtime($lastts);
+print "Fetched last time: $lastts ($lasthour:$lastminute) \n";
 clear_table;
 line2db_prepare;
 my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $startstamp) = 0;
@@ -126,12 +153,10 @@ while (my $filename = readdir(DIR))
 	}
 
 	my $title = <$thefile>;	# first line expected to be title line
-	my $lasthour = 0;
-	my $lastminute = 0;
-	my $lastsecond = 0;
 	my $linedate = 0;
 	my $linesparsed = 0;
 	my $linessaved = 0;
+	my ($linehour, $lineminute, $linesecond) = 0;
 
 	$ft0 = [gettimeofday];
 	while (my $line = <$thefile>)
@@ -152,7 +177,9 @@ while (my $filename = readdir(DIR))
 		next unless ($linemonth == $currmonth || $linemonth == $prevyear);
 		next unless ($lineday == $currday || $lineday == $prevyear);
 
-		my ($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
+		($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
+		# Pick up where we left off, i.e. skip the lines we already saved:
+		if ($linehour < $lasthour && $lineminute <= $lastminute) {next;}
 		# Only save completed minutes. If the log has caught up with current time,
 		# it means we have reached the limit for now:
 		if ($linehour >= $currhour && $lineminute >= $currminute) {last;}
@@ -167,6 +194,7 @@ while (my $filename = readdir(DIR))
 	}
 	$ft1 = [gettimeofday];
 	$perffile = tv_interval($ft0, $ft1);
+
 	if( $perffile > 0.00005 ) {
 		print "Time: $startstamp, perffile: $perffile s, ";
 		print { $perflogfile } "$startstamp; $perffile; $.; ";
@@ -179,6 +207,7 @@ while (my $filename = readdir(DIR))
 		print { $perflogfile } "\n";
 	}
 
+	setlastdbtime(time());
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
 	if ($linesparsed > 0) {
