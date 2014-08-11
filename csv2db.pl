@@ -46,6 +46,8 @@ print "Previous DATE&TIME: $prevdate $prevtime \n";
 $currmonth = 07; #testing
 $currday = 17; #testing
 $prevday = 16; #testing
+$currhour = 10; #testing
+$currminute = 20; #testing
 $currdate="20140717"; # testing
 $prevdate="20140716"; # testing
 
@@ -129,6 +131,7 @@ while (my $filename = readdir(DIR))
 	my $lastsecond = 0;
 	my $linedate = 0;
 	my $linesparsed = 0;
+	my $linessaved = 0;
 
 	$ft0 = [gettimeofday];
 	while (my $line = <$thefile>)
@@ -139,15 +142,20 @@ while (my $filename = readdir(DIR))
 			print "WARNING: Failed to read line $. in file '$filename' (skipping it)\n";
 			next;
 		}
+		$linesparsed++;
 		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
 		($linedate, my $linetime) = split(/ /, $T);
 		my ($lineday, $linemonth, $lineyear) = (split /-/, $linedate);
-		$linemonth = $imonths{$linemonth};
+		$linemonth = $imonths{$linemonth}; # convert to month number
+		# We only care about "fresh" data:
 		next unless ($lineyear == $curryear || $lineyear == $prevyear);
 		next unless ($linemonth == $currmonth || $linemonth == $prevyear);
 		next unless ($lineday == $currday || $lineday == $prevyear);
 
 		my ($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
+		# Only save completed minutes. If the log has caught up with current time,
+		# it means we have reached the limit for now:
+		if ($linehour >= $currhour && $lineminute >= $currminute) {last;}
 
 		$t0 = [gettimeofday];
 		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
@@ -155,7 +163,7 @@ while (my $filename = readdir(DIR))
 		$t0_t1 = tv_interval($t0, $t1);
 		$perfmax = Max($t0_t1, $perfmax);
 		$perfmin = Min($t0_t1, $perfmin);
-		$linesparsed++;
+		$linessaved++;
 	}
 	$ft1 = [gettimeofday];
 	$perffile = tv_interval($ft0, $ft1);
@@ -174,7 +182,7 @@ while (my $filename = readdir(DIR))
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
 	if ($linesparsed > 0) {
-		print "INFO: successfully read lines $linesparsed of $. in file '$filename'\n";
+		print "INFO: successfully saved $linessaved lines of $. in file '$filename'\n";
 	}
 	close $thefile;
 }
