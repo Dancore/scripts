@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use DBI;
 use POSIX qw(strftime);
+use Time::Local;
 # For execution performance measurements:
 use Time::HiRes qw(usleep ualarm gettimeofday tv_interval);
 
@@ -153,9 +154,10 @@ while (my $filename = readdir(DIR))
 	}
 
 	my $title = <$thefile>;	# first line expected to be title line
-	my $linedate = 0;
 	my $linesparsed = 0;
 	my $linessaved = 0;
+	my ($linedate, $linetime) = 0;
+	my ($lineday, $linemonth, $lineyear) = 0;
 	my ($linehour, $lineminute, $linesecond) = 0;
 
 	$ft0 = [gettimeofday];
@@ -169,8 +171,8 @@ while (my $filename = readdir(DIR))
 		}
 		$linesparsed++;
 		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
-		($linedate, my $linetime) = split(/ /, $T);
-		my ($lineday, $linemonth, $lineyear) = (split /-/, $linedate);
+		($linedate, $linetime) = split(/ /, $T);
+		($lineday, $linemonth, $lineyear) = (split /-/, $linedate);
 		$linemonth = $imonths{$linemonth}; # convert to month number
 		# We only care about "fresh" data:
 		next unless ($lineyear == $curryear || $lineyear == $prevyear);
@@ -207,7 +209,10 @@ while (my $filename = readdir(DIR))
 		print { $perflogfile } "\n";
 	}
 
-	setlastdbtime(time());
+	# timelocal($sec,$min,$hour,$mday,$mon-1,$year);
+	my $lastts = timelocal(1, $lineminute, $linehour, $lineday, $linemonth-1, $lineyear);
+	print " lastts: $lastts ($linedate $linetime)\n";
+	setlastdbtime($lastts);
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
 	if ($linesparsed > 0) {
