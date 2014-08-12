@@ -169,7 +169,8 @@ while (my $filename = readdir(DIR))
 	# only csv files and only logfiles with "fresh" data:
 	next unless (-f "$dirpath/$filename");
 	next unless ($filename =~ m/\.csv$/);
-	if ($filename !~ m/$currdate/ && $filename !~ m/$prevdate/ ) {next;}
+	# Disable matching dates in filename because it proved to be unreliable:
+	# if ($filename !~ m/$currdate/ && $filename !~ m/$prevdate/ ) {next;}
 
 	# print "Trying to read csv file '$filename'\n";
 	if (!open ($thefile, '<:encoding(utf8)', $dirpath."/".$filename)) {
