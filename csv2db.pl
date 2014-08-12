@@ -45,6 +45,7 @@ my %imonths;
 @imonths{@months} = (1..($#months+1));
 # print "test $imonths{\"Jan\"} $imonths{\"Dec\"} \n"; exit;
 
+# Prepare current date/time and the previous = the day before the current:
 my $curryear = strftime "%Y", localtime;
 my $currmonth = strftime "%m", localtime;
 my $currday = strftime "%d", localtime;
@@ -56,16 +57,16 @@ my $prevdate = $prevyear.$prevmonth.$prevday;
 # my $currtime = strftime "%H:%M:%S", localtime;
 my $currhour = strftime "%H", localtime;
 my $currminute = strftime "%M", localtime;
-my $prevtime = strftime "%H:%M", localtime(time() - 60);
+# my $prevtime = strftime "%H:%M", localtime(time() - 60);
 $currmonth = 07; #testing
 $currday = 17; #testing
 $prevday = 16; #testing
-$currhour = 10; #testing
-$currminute = 21; #testing
+$currhour = 11; #testing
+$currminute = 34; #testing
 $currdate="20140717"; # testing
 $prevdate="20140716"; # testing
 print "Current DATE&TIME: $currdate $currhour:$currminute Epoc: ".time()."\n";
-print "Previous DATE&TIME: $prevdate $prevtime \n";
+# print "Previous DATE&TIME: $prevdate $prevtime \n";
 
 my $database_table_savedtime = 'taplat_savedtime';
 ###################################################################################
@@ -175,6 +176,8 @@ while (my $filename = readdir(DIR))
 	my ($linedate, $linetime) = 0;
 	my ($lineday, $linemonth, $lineyear) = 0;
 	my ($linehour, $lineminute, $linesecond) = 0;
+	my ($lastday, $lastmonth, $lastyear) = 0;
+	my ($lasthour, $lastminute) = 0;
 
 	$ft0 = [gettimeofday];
 	while (my $line = <$thefile>)
@@ -217,6 +220,12 @@ while (my $filename = readdir(DIR))
 		$perfmax = Max($t0_t1, $perfmax);
 		$perfmin = Min($t0_t1, $perfmin);
 		$linessaved++;
+		# Last date and time sucessfully processed, taking things like month shifts into account:
+		$lastyear = $lineyear;
+		$lastmonth = $linemonth;
+		$lastday = $lineday;
+		$lasthour = $linehour;
+		$lastminute = $lineminute;
 	}
 	$ft1 = [gettimeofday];
 	$perffile = tv_interval($ft0, $ft1);
@@ -233,15 +242,21 @@ while (my $filename = readdir(DIR))
 		print { $perflogfile } "\n";
 	}
 
-	# $linehour = 10; $lineminute = 19; # testing - enforce this as saved minute
-	# timelocal($sec,$min,$hour,$mday,$mon-1,$year);
-	my $savedts = timelocal(1, $lineminute, $linehour, $lineday, $linemonth-1, $lineyear);
-	print "Setting savedts to: $savedts ($linedate $linehour:$lineminute:01)\n";
-	setdb_savedts($savedts);
-	# finally, commit all the lines, if we survived:
-	$dbh->commit; # required unless AutoCommit is set.
-	if ($linesparsed > 0) {
+	# $lasthour = 10; $lastminute = 19; # testing - enforce this as saved minute
+	# $lastyear = 2014; $lastmonth = 07; $lastday = 17; # testing
+	if ($lasthour > 0) {
+		# timelocal($sec,$min,$hour,$mday,$mon-1,$year);
+		my $savedts = timelocal(1, $lastminute, $lasthour, $lastday, $lastmonth-1, $lastyear);
+		print "Setting savedts to: $savedts ($lastyear $lastmonth $lastday $lasthour:$lastminute:01)\n";
+		setdb_savedts($savedts);
+		# finally, commit all the lines, if we survived:
+		$dbh->commit; # required unless AutoCommit is set.
+	}
+	if ($linessaved > 0) {
 		print "INFO: successfully saved $linessaved lines of $linesparsed ($.) in file '$filename'\n";
+	}
+	else {
+		print "INFO: no lines saved out of $linesparsed ($.) in file '$filename'\n";
 	}
 	close $thefile;
 }
