@@ -4,7 +4,8 @@
 use strict;
 use warnings;
 use DBI;
-use POSIX qw(strftime);
+use POSIX qw(strftime tzset);
+# For "reversed" date conversion, from string to timestamp, with timelocal() and timegm():
 use Time::Local;
 # For execution performance measurements:
 use Time::HiRes qw(usleep ualarm gettimeofday tv_interval);
@@ -22,6 +23,23 @@ our ($do_period_calc, $dirpath, $database_name, $database_user, $database_passwo
 # Database handle object:
 my $dbh;
 my $sth;
+
+my $systemtimezone = 'CEST';
+my $localtimezone = strftime "%Z", localtime;
+my $localtzoffset = strftime "%z", localtime;
+
+my $was = scalar localtime;
+print "It was      $was (TZ: $localtimezone offset: $localtzoffset) ($ENV{TZ})\n";
+$ENV{TZ} = 'CEST'; #$systemtimezone;
+# foreach my $key (sort keys(%ENV)) {
+# 	print "$key = $ENV{$key}\n";
+# }
+$was = scalar localtime;
+print "It is still $was  ($ENV{TZ})\n";
+tzset;
+my $now = localtime;
+print "It is now   $now\n";
+
 
 my @months = qw( Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec );
 # my @days = qw(Sun Mon Tue Wed Thu Fri Sat Sun);
