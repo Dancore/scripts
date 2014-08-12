@@ -1,6 +1,8 @@
 *.sublime-project
 *.sublime-workspace
 *.local*
+*.log
+*.csv
 /blib/
 /.build/
 _build/
