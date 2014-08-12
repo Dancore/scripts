@@ -18,28 +18,25 @@ else { print "ERROR: Configuration file not found. Quitting.\n"; exit 1; }
 if (-f $localconfiguration) { require "$localconfiguration"; }
 else { print "INFO: Local configuration file not found. Trying anyway.\n"; }
 # import the settings from config into this (main) namespace/package:
-our ($do_period_calc, $dirpath, $database_name, $database_user, $database_password, $database_host, $database_table, $perflogfilename);
+our ($do_period_calc, $dirpath, $database_name, $database_user, $database_password, $database_host,
+	$database_table, $perflogfilename, $systemtimezone);
 
 # Database handle object:
 my $dbh;
 my $sth;
 
-my $systemtimezone = 'CEST';
+if(!$systemtimezone) {
+	print "ERROR: system timezone setting missing. Quitting\n";
+	exit;
+}
 my $localtimezone = strftime "%Z", localtime;
 my $localtzoffset = strftime "%z", localtime;
-
-my $was = scalar localtime;
-print "It was      $was (TZ: $localtimezone offset: $localtzoffset) ($ENV{TZ})\n";
-$ENV{TZ} = 'CEST'; #$systemtimezone;
-# foreach my $key (sort keys(%ENV)) {
-# 	print "$key = $ENV{$key}\n";
-# }
-$was = scalar localtime;
-print "It is still $was  ($ENV{TZ})\n";
-tzset;
-my $now = localtime;
-print "It is now   $now\n";
-
+print "was TZ: $localtimezone offset: $localtzoffset\n";
+# Use system TZ. But if local TZ == system TZ, don't set it "again" or we get wrong time:
+if($localtimezone ne $systemtimezone) {
+	$ENV{TZ} = $systemtimezone;
+}
+print "now TZ: ".strftime("%Z", localtime)." offset: ".strftime("%z", localtime)."\n";
 
 my @months = qw( Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec );
 # my @days = qw(Sun Mon Tue Wed Thu Fri Sat Sun);
@@ -60,7 +57,7 @@ my $prevdate = $prevyear.$prevmonth.$prevday;
 my $currhour = strftime "%H", localtime;
 my $currminute = strftime "%M", localtime;
 my $prevtime = strftime "%H:%M", localtime(time() - 60);
-print "Current DATE&TIME: $currdate $currhour$currminute Epoc: ".time()."\n";
+print "Current DATE&TIME: $currdate $currhour:$currminute Epoc: ".time()."\n";
 print "Previous DATE&TIME: $prevdate $prevtime \n";
 $currmonth = 07; #testing
 $currday = 17; #testing

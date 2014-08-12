@@ -14,5 +14,6 @@ our $database_host = "/tmp";
 # our $database_port = "5432";
 our $database_table = "sometable";
 
+our $systemtimezone = 'CEST';
 
 1; # true, true...
