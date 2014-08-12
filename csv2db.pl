@@ -155,6 +155,8 @@ print "Fetched saved time: $savedts ($saveddate $savedhour:$savedminute) \n";
 clear_table;
 line2db_prepare;
 my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $startstamp) = 0;
+my $anylinessaved = 0;
+my $numberoffiles = 0;
 
 while (my $filename = readdir(DIR))
 {
@@ -172,6 +174,7 @@ while (my $filename = readdir(DIR))
 	# Disable matching dates in filename because it proved to be unreliable:
 	# if ($filename !~ m/$currdate/ && $filename !~ m/$prevdate/ ) {next;}
 
+	$numberoffiles++;
 	# print "Trying to read csv file '$filename'\n";
 	if (!open ($thefile, '<:encoding(utf8)', $dirpath."/".$filename)) {
 		print "ERROR: Failed to open file '$filename'.\n";
@@ -254,19 +257,29 @@ while (my $filename = readdir(DIR))
 	# $lastyear = 2014; $lastmonth = 07; $lastday = 17; # testing
 	if ($lasthour > 0) {
 		# timelocal($sec,$min,$hour,$mday,$mon-1,$year);
-		my $savedts = timelocal(1, $lastminute, $lasthour, $lastday, $lastmonth-1, $lastyear);
-		print "Setting savedts to: $savedts ($lastyear $lastmonth $lastday $lasthour:$lastminute:01)\n";
-		setdb_savedts($savedts);
+		# my $savedts = timelocal(1, $lastminute, $lasthour, $lastday, $lastmonth-1, $lastyear);
+		# print "Setting savedts to: $savedts ($lastyear $lastmonth $lastday $lasthour:$lastminute:01)\n";
+		# setdb_savedts($savedts);
 		# finally, commit all the lines, if we survived:
 		$dbh->commit; # required unless AutoCommit is set.
 	}
 	if ($linessaved > 0) {
 		print "INFO: successfully saved $linessaved lines of $linesparsed ($.) in file '$filename'\n";
+		$anylinessaved++;
 	}
 	else {
 		print "INFO: no lines saved out of $linesparsed ($.) in file '$filename'\n";
 	}
 	close $thefile;
+}
+
+# If at least one csv file was processed, consider all logs parsed up to "T-1":
+if ($numberoffiles > 0) {
+	print "INFO: Finished updating from $numberoffiles log files in '$dirpath'\n";
+	my $savedts = $currts - 60; # last complete minute
+	print "Setting savedts to: $savedts (".strftime("%Y-%m-%d %H:%M:%S", localtime($savedts)).")\n";
+	setdb_savedts($savedts);
+	$dbh->commit;
 }
 
 # Housekeeping:
