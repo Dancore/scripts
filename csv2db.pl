@@ -26,17 +26,17 @@ my $dbh;
 my $sth;
 
 if(!$systemtimezone) {
-	print "ERROR: system timezone setting missing. Quitting\n";
+	print "ERROR: system timezone setting missing from config. Quitting\n";
 	exit;
 }
 my $localtimezone = strftime "%Z", localtime;
-my $localtzoffset = strftime "%z", localtime;
-print "was TZ: $localtimezone offset: $localtzoffset\n";
+# my $localtzoffset = strftime "%z", localtime;
+# print "was TZ: $localtimezone offset: $localtzoffset\n";
 # Use system TZ. But if local TZ == system TZ, don't set it "again" or we get wrong time:
 if($localtimezone ne $systemtimezone) {
 	$ENV{TZ} = $systemtimezone;
 }
-print "now TZ: ".strftime("%Z", localtime)." offset: ".strftime("%z", localtime)."\n";
+# print "now TZ: ".strftime("%Z", localtime)." offset: ".strftime("%z", localtime)."\n";
 
 my @months = qw( Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec );
 # my @days = qw(Sun Mon Tue Wed Thu Fri Sat Sun);
@@ -63,12 +63,12 @@ $currmonth = 07; #testing
 $currday = 17; #testing
 $prevday = 16; #testing
 $currhour = 10; #testing
-$currminute = 20; #testing
+$currminute = 21; #testing
 $currdate="20140717"; # testing
 $prevdate="20140716"; # testing
 
 my $database_table_latest = 'taplat_latest';
-
+###################################################################################
 # Remember what minute we have processed up to, so we can avoid doing it again:
 sub setlastdbtime
 {
@@ -195,16 +195,19 @@ while (my $filename = readdir(DIR))
 		next unless ($lineday == $currday || $lineday == $prevyear);
 
 		($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
-		# Pick up where we left off, i.e. skip the lines we already saved:
-		if ($linehour < $lasthour) {next;}
-		if ($linehour == $lasthour) {
-			if ($lineminute <= $lastminute) {next;}
-		}
 		# Only save completed minutes. If the log has caught up with current time,
-		# it means we have reached the limit for now:
-		if ($linehour >= $currhour) {
+		# it means we have reached the practical limit for now:
+		if ($linehour > $currhour) {last;}
+		elsif ($linehour == $currhour) {
 			if ($lineminute >= $currminute) {last;}
 		}
+		# Pick up where we left off, i.e. skip the lines we already saved:
+		if ($linehour < $lasthour) {next;}
+		elsif ($linehour == $lasthour) {
+			if ($lineminute <= $lastminute) {next;}
+		}
+		# else this must be a complete, unprocessed minute.
+		# print "Found new minute stats for $lineminute:$linehour ($linedate).\n";
 
 		$t0 = [gettimeofday];
 		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
@@ -229,6 +232,7 @@ while (my $filename = readdir(DIR))
 		print { $perflogfile } "\n";
 	}
 
+	# $linehour = 10; $lineminute = 19; # testing - enforce this as last minute
 	# timelocal($sec,$min,$hour,$mday,$mon-1,$year);
 	my $lastts = timelocal(1, $lineminute, $linehour, $lineday, $linemonth-1, $lineyear);
 	print "Setting Lastts to: $lastts ($linedate $linehour:$lineminute:01)\n";
@@ -236,7 +240,7 @@ while (my $filename = readdir(DIR))
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
 	if ($linesparsed > 0) {
-		print "INFO: successfully saved $linessaved lines of $. in file '$filename'\n";
+		print "INFO: successfully saved $linessaved lines of $linesparsed ($.) in file '$filename'\n";
 	}
 	close $thefile;
 }
