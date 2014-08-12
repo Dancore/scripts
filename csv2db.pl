@@ -10,6 +10,9 @@ use Time::Local;
 # For execution performance measurements:
 use Time::HiRes qw(usleep ualarm gettimeofday tv_interval);
 
+my $savedts = $ARGV[0];	# override saved time(stamp) with another to START from
+my $currts = $ARGV[1]; # override current time(stamp) with another to END with
+
 my $configuration = 'configuration.pl';
 my $localconfiguration = 'configuration.local.pl';
 
@@ -45,27 +48,29 @@ my %imonths;
 @imonths{@months} = (1..($#months+1));
 # print "test $imonths{\"Jan\"} $imonths{\"Dec\"} \n"; exit;
 
+if(!$currts) {$currts = time();}
+
 # Prepare current date/time and the previous = the day before the current:
-my $curryear = strftime "%Y", localtime;
-my $currmonth = strftime "%m", localtime;
-my $currday = strftime "%d", localtime;
+my $curryear = strftime "%Y", localtime($currts);
+my $currmonth = strftime "%m", localtime($currts);
+my $currday = strftime "%d", localtime($currts);
 my $currdate = $curryear.$currmonth.$currday;
-my $prevyear = strftime "%Y", localtime(time() - 86400);
-my $prevmonth = strftime "%m", localtime(time() - 86400);
-my $prevday = strftime "%d", localtime(time() - 86400);
+my $prevyear = strftime "%Y", localtime($currts - 86400);
+my $prevmonth = strftime "%m", localtime($currts - 86400);
+my $prevday = strftime "%d", localtime($currts - 86400);
 my $prevdate = $prevyear.$prevmonth.$prevday;
 # my $currtime = strftime "%H:%M:%S", localtime;
-my $currhour = strftime "%H", localtime;
-my $currminute = strftime "%M", localtime;
+my $currhour = strftime "%H", localtime($currts);
+my $currminute = strftime "%M", localtime($currts);
 # my $prevtime = strftime "%H:%M", localtime(time() - 60);
-$currmonth = 07; #testing
-$currday = 17; #testing
-$prevday = 16; #testing
-$currhour = 11; #testing
-$currminute = 34; #testing
-$currdate="20140717"; # testing
-$prevdate="20140716"; # testing
-print "Current DATE&TIME: $currdate $currhour:$currminute Epoc: ".time()."\n";
+# $currmonth = 07; #testing
+# $currday = 17; #testing
+# $prevday = 16; #testing
+# $currhour = 11; #testing
+# $currminute = 34; #testing
+# $currdate="20140717"; # testing
+# $prevdate="20140716"; # testing
+print "Current DATE&TIME: $currdate $currhour:$currminute Epoc: ".$currts."\n";
 # print "Previous DATE&TIME: $prevdate $prevtime \n";
 
 my $database_table_savedtime = 'taplat_savedtime';
@@ -140,7 +145,9 @@ if (!open ($perflogfile, '>>:encoding(utf8)', $perflogfilename)) {
 # Establish DB connection:
 ConnectDB;
 print "INFO: Successfully connected to database\n";
-my $savedts = getdb_savedts;
+if(!$savedts) {
+	$savedts = getdb_savedts;
+}
 my $savedhour = strftime "%H", localtime($savedts);
 my $savedminute = strftime "%M", localtime($savedts);
 my $saveddate = strftime "%F", localtime($savedts);
