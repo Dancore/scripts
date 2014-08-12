@@ -216,7 +216,7 @@ while (my $filename = readdir(DIR))
 
 	# timelocal($sec,$min,$hour,$mday,$mon-1,$year);
 	my $lastts = timelocal(1, $lineminute, $linehour, $lineday, $linemonth-1, $lineyear);
-	print " lastts: $lastts ($linedate $linetime)\n";
+	print "Setting Lastts to: $lastts ($linedate $linehour:$lineminute:01)\n";
 	setlastdbtime($lastts);
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
