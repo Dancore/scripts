@@ -40,7 +40,7 @@ LASTMIN=-1
 echo "Clean up log files"
 # $(rm ./*.csv)
 echo "Clean up DB"
-# $($CMD_CLEANDB)
+./cleanupdb.pl
 
 echo "Starting loop"
 # enter eternal loop:
@@ -54,8 +54,8 @@ do
 		echo "calling rsync"
 		# $($CMD_RSYNC)
 		echo "calling csv2db"
+		# ./csv2db.pl 1405585141 1405632661 # testing
 		./csv2db.pl
-
 	fi
 	echo "Kill me with CTRL+C."
 	sleep 5
