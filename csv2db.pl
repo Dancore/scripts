@@ -152,7 +152,7 @@ my $savedhour = strftime "%H", localtime($savedts);
 my $savedminute = strftime "%M", localtime($savedts);
 my $saveddate = strftime "%F", localtime($savedts);
 print "Fetched saved time: $savedts ($saveddate $savedhour:$savedminute) \n";
-clear_table;
+# clear_table;
 line2db_prepare;
 my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $startstamp) = 0;
 my $anylinessaved = 0;
