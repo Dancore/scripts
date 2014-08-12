@@ -57,8 +57,6 @@ my $prevdate = $prevyear.$prevmonth.$prevday;
 my $currhour = strftime "%H", localtime;
 my $currminute = strftime "%M", localtime;
 my $prevtime = strftime "%H:%M", localtime(time() - 60);
-print "Current DATE&TIME: $currdate $currhour:$currminute Epoc: ".time()."\n";
-print "Previous DATE&TIME: $prevdate $prevtime \n";
 $currmonth = 07; #testing
 $currday = 17; #testing
 $prevday = 16; #testing
@@ -66,22 +64,24 @@ $currhour = 10; #testing
 $currminute = 21; #testing
 $currdate="20140717"; # testing
 $prevdate="20140716"; # testing
+print "Current DATE&TIME: $currdate $currhour:$currminute Epoc: ".time()."\n";
+print "Previous DATE&TIME: $prevdate $prevtime \n";
 
-my $database_table_latest = 'taplat_latest';
+my $database_table_savedtime = 'taplat_savedtime';
 ###################################################################################
 # Remember what minute we have processed up to, so we can avoid doing it again:
-sub setlastdbtime
+sub setdb_savedts
 {
-	# my $sth = $dbh->prepare("UPDATE $database_table_latest SET timestamp=? WHERE id=1");
-	my $sth = $dbh->prepare("DELETE FROM $database_table_latest");
+	# my $sth = $dbh->prepare("UPDATE $database_table_savedtime SET timestamp=? WHERE id=1");
+	my $sth = $dbh->prepare("DELETE FROM $database_table_savedtime");
 	$sth->execute;
-	$sth = $dbh->prepare("INSERT INTO $database_table_latest VALUES (?,?)");
+	$sth = $dbh->prepare("INSERT INTO $database_table_savedtime VALUES (?,?)");
 	$sth->execute(1, $_[0]);
 	$sth->finish;
 }
-sub getlastdbtime
+sub getdb_savedts
 {
-	my $sth = $dbh->prepare("SELECT * FROM $database_table_latest");
+	my $sth = $dbh->prepare("SELECT * FROM $database_table_savedtime");
 	$sth->execute;
 	my @row = $sth->fetchrow_array();
 	$sth->finish;
@@ -139,10 +139,11 @@ if (!open ($perflogfile, '>>:encoding(utf8)', $perflogfilename)) {
 # Establish DB connection:
 ConnectDB;
 print "INFO: Successfully connected to database\n";
-my $lastts = getlastdbtime;
-my $lasthour = strftime "%H", localtime($lastts);
-my $lastminute = strftime "%M", localtime($lastts);
-print "Fetched last time: $lastts ($lasthour:$lastminute) \n";
+my $savedts = getdb_savedts;
+my $savedhour = strftime "%H", localtime($savedts);
+my $savedminute = strftime "%M", localtime($savedts);
+my $saveddate = strftime "%F", localtime($savedts);
+print "Fetched saved time: $savedts ($saveddate $savedhour:$savedminute) \n";
 clear_table;
 line2db_prepare;
 my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $startstamp) = 0;
@@ -191,8 +192,8 @@ while (my $filename = readdir(DIR))
 		$linemonth = $imonths{$linemonth}; # convert to month number
 		# We only care about "fresh" data:
 		next unless ($lineyear == $curryear || $lineyear == $prevyear);
-		next unless ($linemonth == $currmonth || $linemonth == $prevyear);
-		next unless ($lineday == $currday || $lineday == $prevyear);
+		next unless ($linemonth == $currmonth || $linemonth == $prevmonth);
+		next unless ($lineday == $currday || $lineday == $prevday);
 
 		($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
 		# Only save completed minutes. If the log has caught up with current time,
@@ -202,9 +203,9 @@ while (my $filename = readdir(DIR))
 			if ($lineminute >= $currminute) {last;}
 		}
 		# Pick up where we left off, i.e. skip the lines we already saved:
-		if ($linehour < $lasthour) {next;}
-		elsif ($linehour == $lasthour) {
-			if ($lineminute <= $lastminute) {next;}
+		if ($linehour < $savedhour) {next;}
+		elsif ($linehour == $savedhour) {
+			if ($lineminute <= $savedminute) {next;}
 		}
 		# else this must be a complete, unprocessed minute.
 		# print "Found new minute stats for $lineminute:$linehour ($linedate).\n";
@@ -232,11 +233,11 @@ while (my $filename = readdir(DIR))
 		print { $perflogfile } "\n";
 	}
 
-	# $linehour = 10; $lineminute = 19; # testing - enforce this as last minute
+	# $linehour = 10; $lineminute = 19; # testing - enforce this as saved minute
 	# timelocal($sec,$min,$hour,$mday,$mon-1,$year);
-	my $lastts = timelocal(1, $lineminute, $linehour, $lineday, $linemonth-1, $lineyear);
-	print "Setting Lastts to: $lastts ($linedate $linehour:$lineminute:01)\n";
-	setlastdbtime($lastts);
+	my $savedts = timelocal(1, $lineminute, $linehour, $lineday, $linemonth-1, $lineyear);
+	print "Setting savedts to: $savedts ($linedate $linehour:$lineminute:01)\n";
+	setdb_savedts($savedts);
 	# finally, commit all the lines, if we survived:
 	$dbh->commit; # required unless AutoCommit is set.
 	if ($linesparsed > 0) {
