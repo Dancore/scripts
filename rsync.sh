@@ -25,8 +25,8 @@ TXT
 CURRDATE=$(date +%Y%m%d)
 CURRTIME=$(date +%R)
 CURRTS=$(date +%s)
-PREVTS=$(($CURRTS - 86400))
-PREVMIN=$(($CURRTS - 60))
+PREVTS=$(($CURRTS - 86399))
+PREVMIN=$(($CURRTS - 59))
 PREVTIME=$(date -d @$PREVMIN +%R)
 PREVDATE=$(date -d @$PREVTS +%Y%m%d)
 
