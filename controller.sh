@@ -14,7 +14,7 @@ STOPTIME=$3
 SYSTZ="CEST"
 LOCALTZ=$(date +%Z)
 LOGPATH="./logfiles"
-QUIT_TIME="18:01"	# Time to quit running
+QUIT_TIME=""	# Time to quit running (date string)
 CMD_CLEANDB="./cleanupdb.pl"
 CMD_RSYNC="./rsync.pl"
 CMD_CSV2DB="./csv2db.pl"
@@ -94,18 +94,17 @@ fi
 echo "Starting with pid: $$"
 # disown
 # Make sure we find the first minute immediately:
-LASTMIN=-1
+LASTTS=-1
 
 echo "Starting loop"
 # enter eternal loop:
 for (( ; ; ))
 do
-	NEWMIN=$($SETTZ date +%M)
+	CURRTIME=$($SETTZ date +"%F %T")
 	CURRTS=$($SETTZ date +%s)
-	if [ $NEWMIN -ne $LASTMIN ]; then
-		LASTMIN=$NEWMIN
-		SEC=$($SETTZ date +%S)
-		echo "NEW minute started (HH:$LASTMIN:$SEC)"
+	if [ $CURRTS -ge $(($LASTTS + 60)) ]; then
+		LASTTS=$CURRTS
+		echo "NEW minute started ($CURRTIME)"
 		echo "calling rsync"
 		# $CMD_RSYNC
 		echo "calling csv2db"
@@ -121,9 +120,11 @@ do
 	if [ ! -z $STOPTS ]; then
 		STOPTS=''
 	fi
-	if [ $CURRTS -gt $QUIT_TIMETS ]; then
-		echo "It is more than time to quit! ($QUIT_TIME)"
-		break
+	if [ ! -z "$QUIT_TIME" ];then
+		if [ $CURRTS -gt $QUIT_TIMETS ]; then
+			echo "It is more than time to quit! ($QUIT_TIME)"
+			break
+		fi
 	fi
 	echo "Kill me with CTRL+C (PID: $$)"
 	sleep 5
