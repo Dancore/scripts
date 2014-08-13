@@ -43,7 +43,7 @@ $CMD_CLEANDB
 # If enforcing START/saved and END/current times
 # Note: nothing/null/0 = "auto" date/time:
 STARTTS=$($SETTZ date -d "2014-08-12 16:51:01" +%s)
-ENDTS=$($SETTZ date -d "2014-08-12 17:01:01" +%s)
+# ENDTS=$($SETTZ date -d "2014-08-12 17:01:01" +%s)
 # --------------------------------------------------------
 if [ ! -z $STARTTS ] || [ ! -z $ENDTS ]; then
 	echo "Enforcing initial START/STOP times $STARTTS $ENDTS"
