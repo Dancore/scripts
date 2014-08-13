@@ -61,12 +61,14 @@ do
 		SEC=$(TZ=$SYSTZ date +%S)
 		echo "NEW minute started $LASTMIN:$SEC"
 		echo "calling rsync"
-		# $($CMD_RSYNC)
+		# $CMD_RSYNC
 		echo "calling csv2db"
-		# ./csv2db.pl 1405585141 1405632661 # testing
-		./csv2db.pl
+		$CMD_CSV2DB 0 $ENDTS
+		# artifically increment one minute if ENDTS is enforced above:
+		if [ ! -z $ENDTS ]; then
+			ENDTS=$(( $ENDTS + 60 ))
+		fi
 	fi
 	echo "Kill me with CTRL+C."
 	sleep 5
 done
-
