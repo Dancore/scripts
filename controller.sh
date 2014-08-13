@@ -18,6 +18,8 @@ CMD_CLEANDB="./cleanupdb.pl"
 CMD_RSYNC="./rsync.pl"
 CMD_CSV2DB="./csv2db.pl"
 RUNONCE=0
+# set to stop script if comamand fails:
+set -e
 ##########################################################################
 f_usage()
 {
@@ -50,6 +52,10 @@ clean)
 cleanstart)
 	f_clean
 	;;
+cleanstartonce)
+	f_clean
+	RUNONCE=1
+	;;
 startonce)
 	RUNONCE=1
 	;;
@@ -67,16 +73,17 @@ if [ $LOCALTZ != $SYSTZ ]; then
 # else
 # 	echo "Sys TZ == local TZ"
 fi
-# translate to epoch timestamp
-if [ ! -z $STARTTIME ]; then
+# translate to epoch timestamp:
+if [ ! -z "$STARTTIME" ]; then
 	STARTTS=$($SETTZ date -d "$STARTTIME" +%s)
 fi
-if [ ! -z $STOPTIME ]; then
+if [ ! -z "$STOPTIME" ]; then
 	STOPTS=$($SETTZ date -d "$STOPTIME" +%s)
 fi
 
 echo "Starting with pid: $$"
 # disown
+# Make sure we find the first minute immediately:
 LASTMIN=-1
 
 echo "Starting loop"
