@@ -140,14 +140,14 @@ if (!open ($perflogfile, '>>:encoding(utf8)', $perflogfilename)) {
 
 # Establish DB connection:
 ConnectDB;
-print "INFO: Successfully connected to database\n";
+# print "INFO: Successfully connected to database\n";
 if(!$savedts) {
 	$savedts = getdb_savedts;
 }
 my $savedhour = strftime "%H", localtime($savedts);
 my $savedminute = strftime "%M", localtime($savedts);
 my $saveddate = strftime "%F", localtime($savedts);
-print "Fetched saved time: $savedts ($saveddate $savedhour:$savedminute) \n";
+print "INFO: Got saved time $savedts ($saveddate $savedhour:$savedminute) \n";
 # clear_table;
 line2db_prepare;
 my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $filestartstamp) = 0;
@@ -238,15 +238,15 @@ while (my $filename = readdir(DIR))
 	$ft1 = [gettimeofday];
 	$perffile = tv_interval($ft0, $ft1);
 
-	if( $perffile > 0.00005 ) {
-		print "Time: $filestartstamp, perffile: $perffile s, $linessaved of $. ";
+	if( $linessaved > 0 ) {
+		# print "Time: $filestartstamp, perffile: $perffile s, $linessaved of $. ";
 		print { $perflogfile } "$filestartstamp; $perffile; $.; $linessaved; ";
 
 		if( $perfmax > 0) {
-			print "line2db MAX: $perfmax s, MIN: $perfmin s";
+			# print "line2db MAX: $perfmax s, MIN: $perfmin s";
 			print { $perflogfile } "$perfmax; $perfmin; ";
 		}
-		print "\n";
+		# print "\n";
 		print { $perflogfile } "\n";
 	}
 
@@ -259,7 +259,7 @@ while (my $filename = readdir(DIR))
 		$anylinessaved += $linessaved;
 	}
 	else {
-		print "INFO: no lines saved out of $linesparsed ($.) in file '$filename'\n";
+		print "INFO: NO lines saved out of $linesparsed ($.) in file '$filename'\n";
 	}
 	close $thefile;
 }
@@ -274,7 +274,7 @@ if ($numberoffiles > 0) {
 	print "INFO: Finished $anylinessaved lines from $numberoffiles files in '$dirpath' after $scriptruntime s ";
 	printf("(%.3f l/s)\n", $linespersec);
 	my $savedts = $currts - 60; # last complete minute
-	print "Setting savedts to: $savedts (".strftime("%Y-%m-%d %H:%M:%S", localtime($savedts)).")\n";
+	print "INFO: Setting saved time to $savedts (".strftime("%Y-%m-%d %H:%M:%S", localtime($savedts)).")\n";
 	setdb_savedts($savedts);
 	$dbh->commit;
 }
