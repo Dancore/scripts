@@ -9,6 +9,7 @@ ABOUT="Script for syncing many and large log files being updated in realtime."
 THISFILE=${0##*/}
 args=("$@")
 SYSTZ="CEST"
+LOCALTZ=$(date +%Z)
 LOGPATH="./logfiles"
 CMD_CLEANDB="./cleanupdb.pl"
 CMD_RSYNC="./rsync.pl"
@@ -23,15 +24,12 @@ f_usage()
 TXT
 }
 ##########################################################################
-# OBS Make sure the TZ is correct if using this:
-# Figure out the correct dates (taking the real calendar into account):
-# CURRDATE=$(TZ=$SYSTZ date +%Y%m%d)
-# CURRTIME=$(TZ=$SYSTZ date +%R)
-# CURRTS=$(TZ=$SYSTZ date +%s)
-# PREVTS=$(($CURRTS - 86399))
-# PREVMIN=$(($CURRTS - 59))
-# PREVTIME=$(TZ=$SYSTZ date -d @$PREVMIN +%R)
-# PREVDATE=$(TZ=$SYSTZ date -d @$PREVTS +%Y%m%d)
+# Make sure the TZ is correct to avoid the TZ-bug
+if [ $LOCALTZ != $SYSTZ ]; then
+	SETTZ="TZ=$SYSTZ"
+else
+	echo "Sys TZ == local TZ"
+fi
 
 LASTMIN=-1
 echo "Starting"
@@ -44,12 +42,13 @@ $CMD_CLEANDB
 # --------------------------------------------------------
 # If enforcing START/saved and END/current times
 # Note: nothing/null/0 = "auto" date/time:
-STARTTS=$(TZ=$SYSTZ date -d "2014-08-12 09:01:01" +%s)
-ENDTS=$(TZ=$SYSTZ date -d "2014-08-12 17:01:01" +%s)
+STARTTS=$($SETTZ date -d "2014-08-12 16:51:01" +%s)
+ENDTS=$($SETTZ date -d "2014-08-12 17:01:01" +%s)
 # --------------------------------------------------------
-echo "Enforcing initial dates/times"
-$CMD_CSV2DB $STARTTS $ENDTS
-exit
+if [ ! -z $STARTTS ] || [ ! -z $ENDTS ]; then
+	echo "Enforcing initial START/STOP times $STARTTS $ENDTS"
+	$CMD_CSV2DB $STARTTS $ENDTS
+fi
 # --------------------------------------------------------
 
 echo "Starting loop"
