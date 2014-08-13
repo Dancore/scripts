@@ -224,6 +224,9 @@ while (my $filename = readdir(DIR))
 			elsif ($linehour == $currhour) {
 				if ($lineminute >= $currminute) {last;}
 			}
+		}
+		# If we are processing the saved date, check the minutes
+		if(($lineyear == $savedyear) && ($linemonth == $savedmonth) && ($lineday == $savedday)) {
 			# Pick up where we left off, i.e. skip the lines we already saved:
 			if ($linehour < $savedhour) {next;}
 			elsif ($linehour == $savedhour) {
