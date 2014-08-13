@@ -63,13 +63,7 @@ my $prevdate = $prevyear.$prevmonth.$prevday;
 my $currhour = strftime "%H", localtime($currts);
 my $currminute = strftime "%M", localtime($currts);
 # my $prevtime = strftime "%H:%M", localtime(time() - 60);
-# $currmonth = 07; #testing
-# $currday = 17; #testing
-# $prevday = 16; #testing
-# $currhour = 11; #testing
-# $currminute = 34; #testing
-# $currdate="20140717"; # testing
-# $prevdate="20140716"; # testing
+
 print "Current DATE&TIME: $currdate $currhour:$currminute Epoc: ".$currts."\n";
 # print "Previous DATE&TIME: $prevdate $prevtime \n";
 
@@ -106,7 +100,7 @@ sub line2db_prepare
 sub line2db
 {
 	my ($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid) = @_;
-	if (!$gw) { $gw = "n/a"; }
+	if (!$gw) { $gw = "n/a"; }	# if no gateway info was provided
 	if (!$tapid) { $tapid = 0; }
 	# Insert line into DB:
 	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid);
@@ -168,7 +162,6 @@ while (my $filename = readdir(DIR))
 	my ($starttime_s, $starttime_us) = gettimeofday();
 	$startstamp = "$starttime_s.$starttime_us";
 
-	# only csv files and only logfiles with "fresh" data:
 	next unless (-f "$dirpath/$filename");
 	next unless ($filename =~ m/\.csv$/);
 	# Disable matching dates in filename because it proved to be unreliable:
@@ -196,7 +189,9 @@ while (my $filename = readdir(DIR))
 		chomp $line;
 		# Some sanity checks:
 		if ((!defined $line) || ($line eq "") || ($line eq " ") || (length($line) < 40)) {
-			print "WARNING: Failed to read line $. in file '$filename' (skipping it)\n";
+			# This warning can be "noisy", because all logs I've seen has a bad last line:
+			# TODO? Only warn if it is NOT last line.
+			# print "WARNING: Failed to read line $. in file '$filename' (skipping it)\n";
 			next;
 		}
 		$linesparsed++;
@@ -253,13 +248,7 @@ while (my $filename = readdir(DIR))
 		print { $perflogfile } "\n";
 	}
 
-	# $lasthour = 10; $lastminute = 19; # testing - enforce this as saved minute
-	# $lastyear = 2014; $lastmonth = 07; $lastday = 17; # testing
 	if ($lasthour > 0) {
-		# timelocal($sec,$min,$hour,$mday,$mon-1,$year);
-		# my $savedts = timelocal(1, $lastminute, $lasthour, $lastday, $lastmonth-1, $lastyear);
-		# print "Setting savedts to: $savedts ($lastyear $lastmonth $lastday $lasthour:$lastminute:01)\n";
-		# setdb_savedts($savedts);
 		# finally, commit all the lines, if we survived:
 		$dbh->commit; # required unless AutoCommit is set.
 	}
