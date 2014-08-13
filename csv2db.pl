@@ -13,6 +13,8 @@ use Time::HiRes qw(usleep ualarm gettimeofday tv_interval);
 my $savedts = $ARGV[0];	# override saved time(stamp) with another to START from
 my $currts = $ARGV[1]; # override current time(stamp) with another to END with
 
+my $scriptstarttime = [gettimeofday];
+
 my $configuration = 'configuration.pl';
 my $localconfiguration = 'configuration.local.pl';
 
@@ -148,7 +150,7 @@ my $saveddate = strftime "%F", localtime($savedts);
 print "Fetched saved time: $savedts ($saveddate $savedhour:$savedminute) \n";
 # clear_table;
 line2db_prepare;
-my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $startstamp) = 0;
+my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $filestartstamp) = 0;
 my $anylinessaved = 0;
 my $numberoffiles = 0;
 
@@ -159,8 +161,8 @@ while (my $filename = readdir(DIR))
 	$perfmin = 99999999;
 	$perffilemax = 0;
 	$perffilemin = 99999999;
-	my ($starttime_s, $starttime_us) = gettimeofday();
-	$startstamp = "$starttime_s.$starttime_us";
+	my ($filestarttime_s, $filestarttime_us) = gettimeofday();
+	$filestartstamp = "$filestarttime_s.$filestarttime_us";
 
 	next unless (-f "$dirpath/$filename");
 	next unless ($filename =~ m/\.csv$/);
@@ -237,8 +239,8 @@ while (my $filename = readdir(DIR))
 	$perffile = tv_interval($ft0, $ft1);
 
 	if( $perffile > 0.00005 ) {
-		print "Time: $startstamp, perffile: $perffile s, ";
-		print { $perflogfile } "$startstamp; $perffile; $.; ";
+		print "Time: $filestartstamp, perffile: $perffile s, ";
+		print { $perflogfile } "$filestartstamp; $perffile; $.; ";
 
 		if( $perfmax > 0) {
 			print "line2db MAX: $perfmax s, MIN: $perfmin s";
@@ -254,7 +256,7 @@ while (my $filename = readdir(DIR))
 	}
 	if ($linessaved > 0) {
 		print "INFO: successfully saved $linessaved lines of $linesparsed ($.) in file '$filename'\n";
-		$anylinessaved++;
+		$anylinessaved += $linessaved;
 	}
 	else {
 		print "INFO: no lines saved out of $linesparsed ($.) in file '$filename'\n";
@@ -262,9 +264,15 @@ while (my $filename = readdir(DIR))
 	close $thefile;
 }
 
+# my ($scriptstoptime_s, $scriptstoptime_us) = gettimeofday();
+my $scriptstoptime = [gettimeofday];
+my $scriptruntime = tv_interval($scriptstarttime, $scriptstoptime);
+
 # If at least one csv file was processed, consider all logs parsed up to "T-1":
 if ($numberoffiles > 0) {
-	print "INFO: Finished updating from $numberoffiles log files in '$dirpath'\n";
+	my $linespersec = $anylinessaved/$scriptruntime;
+	print "INFO: Finished $anylinessaved lines from $numberoffiles files in '$dirpath' after $scriptruntime s ";
+	printf("(%.3f l/s)\n", $linespersec);
 	my $savedts = $currts - 60; # last complete minute
 	print "Setting savedts to: $savedts (".strftime("%Y-%m-%d %H:%M:%S", localtime($savedts)).")\n";
 	setdb_savedts($savedts);
