@@ -57,10 +57,10 @@ my $curryear = strftime "%Y", localtime($currts);
 my $currmonth = strftime "%m", localtime($currts);
 my $currday = strftime "%d", localtime($currts);
 my $currdate = $curryear.$currmonth.$currday;
-my $prevyear = strftime "%Y", localtime($currts - 86400);
-my $prevmonth = strftime "%m", localtime($currts - 86400);
-my $prevday = strftime "%d", localtime($currts - 86400);
-my $prevdate = $prevyear.$prevmonth.$prevday;
+# my $prevyear = strftime "%Y", localtime($currts - 86400);
+# my $prevmonth = strftime "%m", localtime($currts - 86400);
+# my $prevday = strftime "%d", localtime($currts - 86400);
+# my $prevdate = $prevyear.$prevmonth.$prevday;
 # my $currtime = strftime "%H:%M:%S", localtime;
 my $currhour = strftime "%H", localtime($currts);
 my $currminute = strftime "%M", localtime($currts);
@@ -135,7 +135,7 @@ opendir(DIR, $dirpath) or die "ERROR: No such directory '$dirpath'. Quitting.\n"
 my $perflogfile;
 # print "Trying to open log file '$perflogfilename'\n";
 if (!open ($perflogfile, '>>:encoding(utf8)', $perflogfilename)) {
-	print "ERROR: Failed to open logfile '$perflogfilename'.\n";
+	print "WARNING: Failed to open logfile '$perflogfilename'.\n";
 }
 
 # Establish DB connection:
@@ -144,9 +144,13 @@ ConnectDB;
 if(!$savedts) {
 	$savedts = getdb_savedts;
 }
+my $savedyear = strftime "%Y", localtime($savedts);
+my $savedmonth = strftime "%m", localtime($savedts);
+my $savedday = strftime "%d", localtime($savedts);
 my $savedhour = strftime "%H", localtime($savedts);
 my $savedminute = strftime "%M", localtime($savedts);
-my $saveddate = strftime "%F", localtime($savedts);
+# my $saveddate = strftime "%F", localtime($savedts);
+my $saveddate = $savedyear.$savedmonth.$savedday;
 print "INFO: Got saved time $savedts ($saveddate $savedhour:$savedminute) \n";
 # clear_table;
 line2db_prepare;
@@ -205,8 +209,14 @@ while (my $filename = readdir(DIR))
 		$linemonth = $imonths{$linemonth}; # convert to month number
 		if ($linemonth > $currmonth) {last;}
 		if ($lineday > $currday) {last;}
-		($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
+
+		# Ignore all dates already processed:
+		if ($lineyear < $savedyear) {next;}
+		if ($linemonth < $savedmonth) {next;}
+		if ($lineday < $savedday) {next;}
+
 		# If we have caught up with the current date, we need to increase resolution to minutes:
+		($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
 		if(($lineyear == $curryear) && ($linemonth == $currmonth) && ($lineday == $currday)) {
 			# Only save completed minutes. If the log has caught up with current time,
 			# it means we have reached the practical limit for now:
