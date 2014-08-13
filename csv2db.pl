@@ -239,8 +239,8 @@ while (my $filename = readdir(DIR))
 	$perffile = tv_interval($ft0, $ft1);
 
 	if( $perffile > 0.00005 ) {
-		print "Time: $filestartstamp, perffile: $perffile s, ";
-		print { $perflogfile } "$filestartstamp; $perffile; $.; ";
+		print "Time: $filestartstamp, perffile: $perffile s, $linessaved of $. ";
+		print { $perflogfile } "$filestartstamp; $perffile; $.; $linessaved; ";
 
 		if( $perfmax > 0) {
 			print "line2db MAX: $perfmax s, MIN: $perfmin s";
