@@ -14,9 +14,9 @@ STOPTIME=$3
 SYSTZ="CEST"
 LOCALTZ=$(date +%Z)
 LOGPATH="./logfiles"
-QUIT_TIME=""	# Time to quit running (date string)
+QUIT_TIME="18:01"	# Time to quit running (date string)
 CMD_CLEANDB="./cleanupdb.pl"
-CMD_RSYNC="./rsync.pl"
+CMD_RSYNC="./css_realtime_taplat_rsync.pl"
 CMD_CSV2DB="./csv2db.pl"
 RUNONCE=''
 # set to stop script if comamand fails:
@@ -96,7 +96,6 @@ echo "Starting with pid: $$"
 # Make sure we find the first minute immediately:
 LASTTS=-1
 
-echo "Starting loop"
 # enter eternal loop:
 for (( ; ; ))
 do
