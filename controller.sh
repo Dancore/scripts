@@ -14,6 +14,7 @@ STOPTIME=$3
 SYSTZ="CEST"
 LOCALTZ=$(date +%Z)
 LOGPATH="./logfiles"
+QUIT_TIME="18:01"	# Time to quit running
 CMD_CLEANDB="./cleanupdb.pl"
 CMD_RSYNC="./rsync.pl"
 CMD_CSV2DB="./csv2db.pl"
@@ -84,6 +85,11 @@ if [ ! -z "$STOPTIME" ]; then
 	STOPTIME=$($SETTZ date -d@$STOPTS +"%F %T")
 	echo "Stop time: $STOPTIME"
 fi
+if [ ! -z "$QUIT_TIME" ]; then
+	QUIT_TIMETS=$($SETTZ date -d "$QUIT_TIME" +%s)
+	QUIT_TIME=$($SETTZ date -d@$QUIT_TIMETS +"%F %T")
+	echo "Quit time: $QUIT_TIME"
+fi
 
 echo "Starting with pid: $$"
 # disown
@@ -95,6 +101,7 @@ echo "Starting loop"
 for (( ; ; ))
 do
 	NEWMIN=$($SETTZ date +%M)
+	CURRTS=$($SETTZ date +%s)
 	if [ $NEWMIN -ne $LASTMIN ]; then
 		LASTMIN=$NEWMIN
 		SEC=$($SETTZ date +%S)
@@ -113,6 +120,10 @@ do
 	fi
 	if [ ! -z $STOPTS ]; then
 		STOPTS=''
+	fi
+	if [ $CURRTS -gt $QUIT_TIMETS ]; then
+		echo "It is more than time to quit! ($QUIT_TIME)"
+		break
 	fi
 	echo "Kill me with CTRL+C (PID: $$)"
 	sleep 5
