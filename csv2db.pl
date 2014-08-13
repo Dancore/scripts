@@ -200,23 +200,25 @@ while (my $filename = readdir(DIR))
 		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
 		($linedate, $linetime) = split(/ /, $T);
 		($lineday, $linemonth, $lineyear) = (split /-/, $linedate);
+		# Ignore the future :)
+		if ($lineyear > $curryear) {last;}
 		$linemonth = $imonths{$linemonth}; # convert to month number
-		# We only care about "fresh" data:
-		next unless ($lineyear == $curryear || $lineyear == $prevyear);
-		next unless ($linemonth == $currmonth || $linemonth == $prevmonth);
-		next unless ($lineday == $currday || $lineday == $prevday);
-
+		if ($linemonth > $currmonth) {last;}
+		if ($lineday > $currday) {last;}
 		($linehour, $lineminute, $linesecond) = (split /:/, $linetime);
-		# Only save completed minutes. If the log has caught up with current time,
-		# it means we have reached the practical limit for now:
-		if ($linehour > $currhour) {last;}
-		elsif ($linehour == $currhour) {
-			if ($lineminute >= $currminute) {last;}
-		}
-		# Pick up where we left off, i.e. skip the lines we already saved:
-		if ($linehour < $savedhour) {next;}
-		elsif ($linehour == $savedhour) {
-			if ($lineminute <= $savedminute) {next;}
+		# If we have caught up with the current date, we need to increase resolution to minutes:
+		if(($lineyear == $curryear) && ($linemonth == $currmonth) && ($lineday == $currday)) {
+			# Only save completed minutes. If the log has caught up with current time,
+			# it means we have reached the practical limit for now:
+			if ($linehour > $currhour) {last;}
+			elsif ($linehour == $currhour) {
+				if ($lineminute >= $currminute) {last;}
+			}
+			# Pick up where we left off, i.e. skip the lines we already saved:
+			if ($linehour < $savedhour) {next;}
+			elsif ($linehour == $savedhour) {
+				if ($lineminute <= $savedminute) {next;}
+			}
 		}
 		# else this must be a complete, unprocessed minute.
 		# print "Found new minute stats for $lineminute:$linehour ($linedate).\n";
