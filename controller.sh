@@ -17,7 +17,7 @@ LOGPATH="./logfiles"
 CMD_CLEANDB="./cleanupdb.pl"
 CMD_RSYNC="./rsync.pl"
 CMD_CSV2DB="./csv2db.pl"
-RUNONCE=0
+RUNONCE=''
 # set to stop script if comamand fails:
 set -e
 ##########################################################################
@@ -76,9 +76,13 @@ fi
 # translate to epoch timestamp:
 if [ ! -z "$STARTTIME" ]; then
 	STARTTS=$($SETTZ date -d "$STARTTIME" +%s)
+	STARTTIME=$($SETTZ date -d@$STARTTS +"%F %T")
+	echo "Start time: $STARTTIME"
 fi
 if [ ! -z "$STOPTIME" ]; then
 	STOPTS=$($SETTZ date -d "$STOPTIME" +%s)
+	STOPTIME=$($SETTZ date -d@$STOPTS +"%F %T")
+	echo "Stop time: $STOPTIME"
 fi
 
 echo "Starting with pid: $$"
@@ -100,12 +104,11 @@ do
 		echo "calling csv2db"
 		$CMD_CSV2DB $STARTTS $STOPTS
 	fi
-	if [ $RUNONCE ]; then break; fi
+	if [ ! -z $RUNONCE ]; then break; fi
 	# Enforced start and stop time should only run once, then it should be auto.
 	# it doesn't (normally) make sense to run 4-ever with static START and/or STOP.
 	# Note: calling with args nothing/null/0 = "auto" date/time.
 	if [ ! -z $STARTTS ]; then
-		echo "setting null"
 		STARTTS=''
 	fi
 	if [ ! -z $STOPTS ]; then
