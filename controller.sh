@@ -59,7 +59,7 @@ do
 	if [ $NEWMIN -ne $LASTMIN ]; then
 		LASTMIN=$NEWMIN
 		SEC=$(TZ=$SYSTZ date +%S)
-		echo "NEW minute started $LASTMIN:$SEC"
+		echo "NEW minute started HH:$LASTMIN:$SEC"
 		echo "calling rsync"
 		# $CMD_RSYNC
 		echo "calling csv2db"
