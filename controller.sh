@@ -7,11 +7,13 @@ ABOUT="Script for syncing many and large log files being updated in realtime."
 # 2014-08-11 Dan Kopparhed
 ##########################################################################
 THISFILE=${0##*/}
-SYSTZ="CEST"
-SERVER="TBD"
-RPATH="./logfiles"
-LPATH="./"
 args=("$@")
+SYSTZ="CEST"
+LOGPATH="./logfiles"
+CMD_CLEANDB="./cleanupdb.pl"
+CMD_RSYNC="./rsync.pl"
+CMD_CSV2DB="./csv2db.pl"
+
 ##########################################################################
 f_usage()
 {
@@ -31,16 +33,24 @@ TXT
 # PREVTIME=$(TZ=$SYSTZ date -d @$PREVMIN +%R)
 # PREVDATE=$(TZ=$SYSTZ date -d @$PREVTS +%Y%m%d)
 
-CMD_RSYNC=""
-CMD_CSV2DB="./csv2db.pl"
-CMD_CLEANDB="./cleandb.pl"
-
 LASTMIN=-1
-
+echo "Starting"
 echo "Clean up log files"
-# $(rm ./*.csv)
+# $(rm $LOGPATH/*.csv)
 echo "Clean up DB"
-./cleanupdb.pl
+$CMD_CLEANDB
+
+# --------------------------------------------------------
+# --------------------------------------------------------
+# If enforcing START/saved and END/current times
+# Note: nothing/null/0 = "auto" date/time:
+STARTTS=$(TZ=$SYSTZ date -d "2014-08-12 09:01:01" +%s)
+ENDTS=$(TZ=$SYSTZ date -d "2014-08-12 17:01:01" +%s)
+# --------------------------------------------------------
+echo "Enforcing initial dates/times"
+$CMD_CSV2DB $STARTTS $ENDTS
+exit
+# --------------------------------------------------------
 
 echo "Starting loop"
 # enter eternal loop:
