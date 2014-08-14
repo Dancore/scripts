@@ -33,6 +33,7 @@ f_usage()
  	startonce		Start but stop after running once.
  	clean 			Delete old data and CSV files.
  	cleanstart		First clean, then start.
+ 	cleanstartonce	First clean, then start but only run once.
  	help			This text.
 TXT
 }
