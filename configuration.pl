@@ -2,6 +2,8 @@
 
 # A filename and path for logging performance measurements:
 our $perflogfilename = './performance.log';
+our $log_stdout = 1;
+our $log_am = 0;
 
 # from where we read the csv files:
 our $dirpath = "./logfiles";
