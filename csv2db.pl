@@ -57,24 +57,16 @@ my $curryear = strftime "%Y", localtime($currts);
 my $currmonth = strftime "%m", localtime($currts);
 my $currday = strftime "%d", localtime($currts);
 my $currdate = $curryear.$currmonth.$currday;
-# my $prevyear = strftime "%Y", localtime($currts - 86400);
-# my $prevmonth = strftime "%m", localtime($currts - 86400);
-# my $prevday = strftime "%d", localtime($currts - 86400);
-# my $prevdate = $prevyear.$prevmonth.$prevday;
-# my $currtime = strftime "%H:%M:%S", localtime;
 my $currhour = strftime "%H", localtime($currts);
 my $currminute = strftime "%M", localtime($currts);
-# my $prevtime = strftime "%H:%M", localtime(time() - 60);
 
 print "Current DATE&TIME: $currdate $currhour:$currminute Epoc: ".$currts."\n";
-# print "Previous DATE&TIME: $prevdate $prevtime \n";
 
 my $database_table_savedtime = 'taplat_savedtime';
 ###################################################################################
 # Remember what minute we have processed up to, so we can avoid doing it again:
 sub setdb_savedts
 {
-	# my $sth = $dbh->prepare("UPDATE $database_table_savedtime SET timestamp=? WHERE id=1");
 	my $sth = $dbh->prepare("DELETE FROM $database_table_savedtime");
 	$sth->execute;
 	$sth = $dbh->prepare("INSERT INTO $database_table_savedtime VALUES (?,?)");
@@ -83,7 +75,7 @@ sub setdb_savedts
 }
 sub getdb_savedts
 {
-	my $sth = $dbh->prepare("SELECT * FROM $database_table_savedtime");
+	my $sth = $dbh->prepare("SELECT * FROM $database_table_savedtime LIMIT 1");
 	$sth->execute;
 	my @row = $sth->fetchrow_array();
 	$sth->finish;
@@ -108,10 +100,15 @@ sub line2db
 	$sth->execute($T, $tcode, $txid, $avg, $max, $min, $ntx, $gw, $tapid);
 }
 
+# Clear out table when re-running test, avoid filling the DB with repeated data:
 sub clear_table
 {
-	# empty table when re-running test, avoid filling the DB with repeated data:
-	my $sth = $dbh->prepare("DELETE FROM $database_table");
+	# TRUNCATE quickly removes all rows from a set of tables. It has the same effect as an
+	# unqualified DELETE on each table, but since it does not actually scan the tables it is faster.
+	# Furthermore, it reclaims disk space immediately, rather than requiring a subsequent VACUUM
+	# operation. This is most useful on large tables.
+
+	my $sth = $dbh->prepare("TRUNCATE $database_table");
 	$sth->execute;
 	# print "Cleared table\n";
 }
@@ -124,6 +121,7 @@ sub ConnectDB
 	or die "ERROR: Failed to connect to database: $DBI::errstr\n";
 }
 
+# simple MIN/MAX algos that returns min/max of two values provided:
 sub Max { if($_[0] > $_[1]) {return $_[0];} return $_[1]; }
 sub Min { if($_[0] < $_[1]) {return $_[0];} return $_[1]; }
 
@@ -236,8 +234,10 @@ while (my $filename = readdir(DIR))
 		# else this must be a complete, unprocessed minute.
 		# print "Found new minute stats for $lineminute:$linehour ($linedate).\n";
 
+		# get the gw and tapid data from the filename:
+		my($part1, $part2, $tapid, $gateway, $rest) = split /_/, $filename, 5;
 		$t0 = [gettimeofday];
-		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx);
+		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx, $gateway, $tapid);
 		$t1 = [gettimeofday];
 		$t0_t1 = tv_interval($t0, $t1);
 		$perfmax = Max($t0_t1, $perfmax);
