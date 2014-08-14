@@ -14,6 +14,7 @@ STOPTIME=$3
 SYSTZ="CEST"
 LOCALTZ=$(date +%Z)
 LOGPATH="./logfiles"
+TRASHCAN_PATH="./Trashcan"
 QUIT_TIME="18:01"	# Time to quit running (date string)
 CMD_CLEANDB="./cleanupdb.pl"
 CMD_RSYNC="./css_realtime_taplat_rsync.pl"
@@ -40,9 +41,11 @@ TXT
 ##########################################################################
 f_clean()
 {
-	echo "Clean up log files"
-	# $(rm $LOGPATH/*.csv)
-	echo "Clean up DB"
+	# echo "Removing old junk, emptying Trashcan"
+	# $(rm $TRASHCAN_PATH/*.csv)
+	echo "Cleaning away log files, filling up Trashcan"
+	$(mv $LOGPATH/*.csv $TRASHCAN_PATH)
+	echo "Cleaning up DB"
 	$CMD_CLEANDB
 }
 ##########################################################################
