@@ -18,10 +18,15 @@ our ($do_period_calc, $dirpath, $database_name, $database_user, $database_passwo
 
 my $dbh;
 
+# Clear out table when re-running test, avoid filling the DB with repeated data:
 sub clear_table
 {
-	# empty table when re-running test, avoid filling the DB with repeated data:
-	my $sth = $dbh->prepare("DELETE FROM $database_table");
+	# TRUNCATE quickly removes all rows from a set of tables. It has the same effect as an
+	# unqualified DELETE on each table, but since it does not actually scan the tables it is faster.
+	# Furthermore, it reclaims disk space immediately, rather than requiring a subsequent VACUUM
+	# operation. This is most useful on large tables.
+
+	my $sth = $dbh->prepare("TRUNCATE $database_table");
 	$sth->execute;
 	# print "Cleared table\n";
 }
