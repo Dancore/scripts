@@ -17,7 +17,7 @@ LOGPATH="./logfiles"
 TRASHCAN_PATH="./Trashcan"
 QUIT_TIME="18:01"	# Time to quit running (date string)
 CMD_CLEANDB="./cleanupdb.pl"
-CMD_RSYNC="./css_realtime_taplat_rsync.pl"
+CMD_RSYNC="./css_realtime_taplat_rsync_logfile.pl"
 CMD_CSV2DB="./csv2db.pl"
 RUNONCE=''
 # set to stop script if comamand fails:
@@ -42,9 +42,9 @@ TXT
 f_clean()
 {
 	# echo "Removing old junk, emptying Trashcan"
-	# $(rm $TRASHCAN_PATH/*.csv)
+	# $(rm $TRASHCAN_PATH/*.csv >/dev/null 2>&1) && echo -n || echo "Already empty"
 	echo "Cleaning away log files, filling up Trashcan"
-	$(mv $LOGPATH/*.csv $TRASHCAN_PATH)
+	$(mv $LOGPATH/*.csv $TRASHCAN_PATH >/dev/null 2>&1) && echo -n || echo "Already empty"
 	echo "Cleaning up DB"
 	$CMD_CLEANDB
 }
