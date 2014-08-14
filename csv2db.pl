@@ -1,6 +1,11 @@
 #!/usr/bin/perl -w
 # Parse CSV and simply push each line into a database for future processing and presentation.
 
+# use lib "$ENV{'OMEX_ROOT'}/go/cur/lib/perl/";
+# use lib "$ENV{'OMEX_ROOT'}/go/cur/lib/perl/arch";
+# use Genium::GO::Batch;
+# use AMT;
+
 use strict;
 use warnings;
 use DBI;
@@ -25,13 +30,29 @@ else { print "INFO: Local configuration file not found. Trying anyway.\n"; }
 # import the settings from config into this (main) namespace/package:
 our ($do_period_calc, $dirpath, $database_name, $database_user, $database_password, $database_host,
 	$database_table, $perflogfilename, $systemtimezone);
+our ($log_stdout, $log_am);
 
 # Database handle object:
 my $dbh;
 my $sth;
 
+###################################################################################
+# simple log handling
+sub log_this
+{
+	my ($logmsg, $type) = @_;
+	if(!$type) {$type = "INFO";}
+	if($log_stdout) {
+		print "$type: $logmsg\n";
+	}
+	if($log_am) {
+		am_log("I", 0, "$logmsg");
+	}
+}
+###################################################################################
+
 if(!$systemtimezone) {
-	print "ERROR: system timezone setting missing from config. Quitting\n";
+	log_this "system timezone setting missing from config. Quitting", "ERROR";
 	exit;
 }
 my $localtimezone = strftime "%Z", localtime;
@@ -133,7 +154,7 @@ opendir(DIR, $dirpath) or die "ERROR: No such directory '$dirpath'. Quitting.\n"
 my $perflogfile;
 # print "Trying to open log file '$perflogfilename'\n";
 if (!open ($perflogfile, '>>:encoding(utf8)', $perflogfilename)) {
-	print "WARNING: Failed to open logfile '$perflogfilename'.\n";
+	log_this "Failed to open logfile '$perflogfilename'.", "WARNING";
 }
 
 # Establish DB connection:
@@ -149,7 +170,8 @@ my $savedhour = strftime "%H", localtime($savedts);
 my $savedminute = strftime "%M", localtime($savedts);
 # my $saveddate = strftime "%F", localtime($savedts);
 my $saveddate = $savedyear.$savedmonth.$savedday;
-print "INFO: Got saved time $savedts ($saveddate $savedhour:$savedminute) \n";
+my $logmsg = "Got saved time $savedts ($saveddate $savedhour:$savedminute)";
+log_this($logmsg);
 # clear_table;
 line2db_prepare;
 my ($t0, $t1, $t0_t1, $perfmax, $perfmin, $perffilemax, $perffilemin, $ft0, $ft1, $perffile, $filestartstamp) = 0;
@@ -174,7 +196,7 @@ while (my $filename = readdir(DIR))
 	$numberoffiles++;
 	# print "Trying to read csv file '$filename'\n";
 	if (!open ($thefile, '<:encoding(utf8)', $dirpath."/".$filename)) {
-		print "ERROR: Failed to open file '$filename'.\n";
+		log_this "Failed to open file '$filename'.", "ERROR";
 		next;
 	}
 
@@ -270,11 +292,11 @@ while (my $filename = readdir(DIR))
 		$dbh->commit; # required unless AutoCommit is set.
 	}
 	if ($linessaved > 0) {
-		print "INFO: successfully saved $linessaved lines of $linesparsed ($.) in file '$filename'\n";
+		log_this "successfully saved $linessaved lines of $linesparsed ($.) in file '$filename'";
 		$anylinessaved += $linessaved;
 	}
 	else {
-		print "INFO: NO lines saved out of $linesparsed ($.) in file '$filename'\n";
+		log_this "NO lines saved out of $linesparsed ($.) in file '$filename'";
 	}
 	close $thefile;
 }
@@ -286,10 +308,12 @@ my $scriptruntime = tv_interval($scriptstarttime, $scriptstoptime);
 # If at least one csv file was processed, consider all logs parsed up to "T-1":
 if ($numberoffiles > 0) {
 	my $linespersec = $anylinessaved/$scriptruntime;
-	print "INFO: Finished $anylinessaved lines from $numberoffiles files in '$dirpath' after $scriptruntime s ";
-	printf("(%.3f l/s)\n", $linespersec);
+	$logmsg = "Finished $anylinessaved lines from $numberoffiles files in '$dirpath' after $scriptruntime s";
+	$logmsg .= sprintf("(%.3f l/s)", $linespersec);
+	log_this($logmsg);
 	my $savedts = $currts - 60; # last complete minute
-	print "INFO: Setting saved time to $savedts (".strftime("%Y-%m-%d %H:%M:%S", localtime($savedts)).")\n";
+	$logmsg = "Setting saved time to $savedts (".strftime("%Y-%m-%d %H:%M:%S", localtime($savedts)).")";
+	log_this($logmsg);
 	setdb_savedts($savedts);
 	$dbh->commit;
 }
