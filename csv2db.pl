@@ -221,12 +221,16 @@ while (my $filename = readdir(DIR))
 			next;
 		}
 		$linesparsed++;
-		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+#Old broken		my ($T, $tcode, $txid, $avg, $max, $min, $ntx) = (split /;/, $line);
+		my ($gateway,$tapid,$T,$txid,$tcode,$avg,$max,$min,$ntx) = (split /;/, $line);
+		$T =~ s/\..*//;## Vikkar need to remove less than second part
 		($linedate, $linetime) = split(/ /, $T);
-		($lineday, $linemonth, $lineyear) = (split /-/, $linedate);
+		#($lineday, $linemonth, $lineyear) = (split /-/, $linedate);
+		($lineyear,$linemonth,$lineday) = (split /-/, $linedate); # Vikkar New format
+		
 		# Ignore the future :)
 		if ($lineyear > $curryear) {last;}
-		$linemonth = $imonths{$linemonth}; # convert to month number
+		#$linemonth = $imonths{$linemonth}; # convert to month number Vikkar not needed
 		if ($linemonth > $currmonth) {last;}
 		if ($lineday > $currday) {last;}
 
@@ -257,9 +261,9 @@ while (my $filename = readdir(DIR))
 		# print "Found new minute stats for $lineminute:$linehour ($linedate).\n";
 
 		# get the gw and tapid data from the filename:
-		my($part1, $part2, $tapid, $gateway, $rest) = split /_/, $filename, 5;
+#		my($part1, $part2, $tapid, $gateway, $rest) = split /_/, $filename, 5;
 		$t0 = [gettimeofday];
-		line2db($T, $tcode, $txid, $avg, $max, $min, $ntx, $gateway, $tapid);
+		line2db($gateway,$tapid,$T,$txid,$tcode,$avg,$max,$min,$ntx);
 		$t1 = [gettimeofday];
 		$t0_t1 = tv_interval($t0, $t1);
 		$perfmax = Max($t0_t1, $perfmax);
