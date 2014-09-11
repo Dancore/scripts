@@ -20,17 +20,16 @@ function handleresult(res, callback) {
 //	console.log(buffer.length)
 //	console.log(buffer.length +' nr of chars in the data: ' + buffer)
 //	console.log(buffer)
-	callback(null, buffer)
+	callback(buffer)
   });
 }
-function final() { console.log('Done', results); }
+function final() { console.log(results.join('\n')); }
 
-for(i = 0; i < 3; i++)
-{
- http.get(argv[i+2], function(res){handleresult(res, function(err, data) {
+function httpGet(ind) {
+ http.get(argv[ind+2], function(res){ handleresult(res, function(data) {
+//	console.log(result_count + " ind "+ind+" got data: " + data) 
+	results[ind]=data
 	result_count++;
-	console.log(result_count + " got data: " + data) 
-	results[i]=data
 	if(result_count >= 3)
 		final();
  });
@@ -38,3 +37,5 @@ for(i = 0; i < 3; i++)
  	console.log('problem with request: ' + e.message);
  });
 }
+
+for(i = 0; i < 3; i++) httpGet(i)
